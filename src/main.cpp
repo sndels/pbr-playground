@@ -6,6 +6,9 @@
 #include <imgui.h>
 #include <imgui_impl_glfw_gl3.h>
 #include <iostream>
+#include <sstream>
+
+#include "logger.hpp"
 
 using std::cout;
 using std::cerr;
@@ -75,6 +78,15 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLin
     // Setup imgui
     ImGui_ImplGlfwGL3_Init(windowPtr, true);
 
+    Logger logger;
+    logger.AddLog("[gl] Context: %s\n     GLSL: %s\n",
+                   glGetString(GL_VERSION),
+                   glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+    // Capture cout for logging
+    std::stringstream logCout;
+    std::streambuf* oldCout = std::cout.rdbuf(logCout.rdbuf());
+
     // Run the main loop
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
@@ -85,6 +97,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLin
         // Update imgui
         {
             ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+            if (logCout.str().length() != 0) {
+                logger.AddLog("%s", logCout.str().c_str());
+                logCout.str("");
+            }
+            logger.Draw();
         }
 
         ImGui::Render();
@@ -92,6 +109,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLin
     }
 
     // Release resources
+    std::cout.rdbuf(oldCout);
     ImGui_ImplGlfwGL3_Shutdown();
     glfwDestroyWindow(windowPtr);
     glfwTerminate();
