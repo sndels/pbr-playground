@@ -1,3 +1,6 @@
 [submodule "ext/libgl3w"]
 	path = ext/libgl3w
 	url = https://github.com/sndels/libgl3w.git
+[submodule "ext/imgui"]
+	path = ext/imgui
+	url = https://github.com/ocornut/imgui.git
