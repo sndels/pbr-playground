@@ -1,0 +1,3 @@
+[submodule "ext/libgl3w"]
+	path = ext/libgl3w
+	url = https://github.com/sndels/libgl3w.git
