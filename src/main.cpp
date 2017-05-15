@@ -3,6 +3,8 @@
 
 #include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <imgui_impl_glfw_gl3.h>
 #include <iostream>
 
 using std::cout;
@@ -70,16 +72,27 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLin
         exit(EXIT_FAILURE);
     }
 
+    // Setup imgui
+    ImGui_ImplGlfwGL3_Init(windowPtr, true);
+
     // Run the main loop
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
+        ImGui_ImplGlfwGL3_NewFrame();
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Update imgui
+        {
+            ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        }
+
+        ImGui::Render();
         glfwSwapBuffers(windowPtr);
     }
 
     // Release resources
+    ImGui_ImplGlfwGL3_Shutdown();
     glfwDestroyWindow(windowPtr);
     glfwTerminate();
     exit(EXIT_SUCCESS);

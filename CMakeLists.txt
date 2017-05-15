@@ -32,4 +32,5 @@ target_link_libraries(skunkwork
     ${OPENGL_LIBRARIES}
     ${GLFW_LIBRARIES}
     libgl3w
+    imgui
 )
