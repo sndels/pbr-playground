@@ -1,5 +1,7 @@
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #include <windows.h>
+#endif // _WIN32
 
 #include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
@@ -25,13 +27,17 @@ static void errorCallback(int error, const char* description)
     cerr << "GLFW error " << error << ": " << description << endl;
 }
 
+#ifdef _WIN32
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 {
     (void) hInstance;
     (void) hPrevInstance;
     (void) lpCmdLine;
     (void) nCmdShow;
-
+#else
+int main()
+{
+#endif // _WIN32
     // Init GLFW-context
     glfwSetErrorCallback(errorCallback);
     if (!glfwInit()) exit(EXIT_FAILURE);
