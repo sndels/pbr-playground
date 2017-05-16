@@ -27,6 +27,9 @@ private:
     std::string _vertPath;
     std::string _geomPath;
     std::string _fragPath;
+    time_t      _vertMod;
+    time_t      _geomMod;
+    time_t      _fragMod;
 
 };
 

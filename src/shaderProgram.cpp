@@ -2,9 +2,21 @@
 
 #include <iostream>
 #include <fstream>
+#include <sys/stat.h>
 
 using std::cout;
 using std::endl;
+
+// Get last time modified for file
+time_t getMod(const std::string& path) {
+    struct stat sb;
+    if (stat(path.c_str(), &sb) == -1) {
+        std::cout << "[shader] stat failed for " << path << std::endl;
+        return (time_t) - 1;
+    }
+
+    return sb.st_mtime;
+}
 
 ShaderProgram::ShaderProgram(const std::string& vertPath, const std::string& fragPath,
                              const std::string& geomPath) :
@@ -42,10 +54,15 @@ bool ShaderProgram::bind() const
 
 void ShaderProgram::reload()
 {
-    GLuint progID = loadProgram();
-    if (progID != 0) {
-        glDeleteProgram(_progID);
-        _progID = progID;
+    // Reload shaders if some was modified
+    if (getMod(_fragPath) != _fragMod ||
+        getMod(_vertPath) != _vertMod ||
+        (_geomPath.length() > 0 && getMod(_geomPath) != _geomMod)) {
+        GLuint progID = loadProgram();
+        if (progID != 0) {
+            glDeleteProgram(_progID);
+            _progID = progID;
+        }
     }
 }
 
@@ -60,6 +77,11 @@ GLint ShaderProgram::getULoc(const char* uniformName) const {
 GLuint ShaderProgram::loadProgram()
 {
     GLuint progID = glCreateProgram();
+
+    // Update file timestamps
+    _vertMod = getMod(_vertPath);
+    if (_geomPath.length() > 0) _geomMod = getMod(_geomPath);
+    _fragMod = getMod(_fragPath);
 
     //Load and attacth shaders
     GLuint vertexShader = loadShaderFromFile(_vertPath, GL_VERTEX_SHADER);
