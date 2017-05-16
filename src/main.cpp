@@ -24,6 +24,9 @@ using std::endl;
 namespace {
     GLsizei XRES = 1280;
     GLsizei YRES = 720;
+    float LOGW = 600.f;
+    float LOGH = 200.f;
+    float LOGM = 10.f;
     const static char* WINDOW_TITLE = "skunkwork";
 }
 
@@ -97,6 +100,10 @@ int main()
 
     // Setup imgui
     ImGui_ImplGlfwGL3_Init(windowPtr, true);
+    ImGuiWindowFlags logWindowFlags= 0;
+    logWindowFlags |= ImGuiWindowFlags_NoTitleBar;
+    logWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+    bool showLog = true;
 
     Logger logger;
     logger.AddLog("[gl] Context: %s\n     GLSL: %s\n",
@@ -126,12 +133,16 @@ int main()
 
         // Update imgui
         {
+            ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(LOGM, YRES - LOGH - LOGM), ImGuiSetCond_Always);
+            ImGui::Begin("Log", &showLog, logWindowFlags);
             ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
             if (logCout.str().length() != 0) {
                 logger.AddLog("%s", logCout.str().c_str());
                 logCout.str("");
             }
             logger.Draw();
+            ImGui::End();
         }
 
         // Try reloading the shader every 0.5s
