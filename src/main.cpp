@@ -11,6 +11,7 @@
 #include <sstream>
 
 #include "logger.hpp"
+#include "shaderProgram.hpp"
 
 using std::cout;
 using std::cerr;
@@ -92,6 +93,13 @@ int main()
     // Capture cout for logging
     std::stringstream logCout;
     std::streambuf* oldCout = std::cout.rdbuf(logCout.rdbuf());
+
+    // Load shader
+    std::string vertPath(RES_DIRECTORY);
+    vertPath += "shader/basic_vert.glsl";
+    std::string fragPath(RES_DIRECTORY);
+    fragPath += "shader/basic_frag.glsl";
+    ShaderProgram s(vertPath, fragPath);
 
     // Run the main loop
     while (!glfwWindowShouldClose(windowPtr)) {
