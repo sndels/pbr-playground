@@ -4,6 +4,8 @@
 #endif // _WIN32
 
 #include <GL/gl3w.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw_gl3.h>
@@ -141,6 +143,8 @@ int main()
         if (s.isLinked()) {
             s.bind();
             glUniform1f(s.getULoc("uGT"), gT.getSeconds());
+            glm::vec2 res(XRES,YRES);
+            glUniform2fv(s.getULoc("uRes"), 1, glm::value_ptr(res));
             q.render();
         }
 

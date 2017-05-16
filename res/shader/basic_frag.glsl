@@ -1,10 +1,12 @@
 #version 410
 
 uniform float uGT;
+uniform vec2  uRes;
 
 out vec4 fragColor;
 
 void main()
 {
-    fragColor = vec4(0.5 + 0.5 * cos(uGT), 0.5 + 0.5 * sin(uGT), 1, 1);
+    vec2 uv = gl_FragCoord.xy / uRes.xy;
+    fragColor = vec4(uv, 0.5 + 0.5 * sin(uGT), 1);
 }
