@@ -14,16 +14,19 @@ public:
 
     bool isLinked() const;
     bool bind() const;
+    void reload();
     GLint getULoc(const char* uniformName) const;
 
 private:
-    GLuint loadProgram(const std::string& vertPath, const std::string& fragPath,
-                       const std::string& geomPath);
+    GLuint loadProgram();
     GLuint loadShaderFromFile(const std::string& path, GLenum shaderType);
     void printProgramLog(GLuint program) const;
     void printShaderLog(GLuint shader) const;
 
     GLuint _progID;
+    std::string _vertPath;
+    std::string _geomPath;
+    std::string _fragPath;
 
 };
 

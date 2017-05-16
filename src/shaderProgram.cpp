@@ -8,9 +8,12 @@ using std::endl;
 
 ShaderProgram::ShaderProgram(const std::string& vertPath, const std::string& fragPath,
                              const std::string& geomPath) :
-    _progID(0)
+    _progID(0),
+    _vertPath(vertPath),
+    _geomPath(geomPath),
+    _fragPath(fragPath)
 {
-    GLuint progID = loadProgram(vertPath, fragPath, geomPath);
+    GLuint progID = loadProgram();
     if (progID != 0) _progID = progID;
 }
 
@@ -37,6 +40,15 @@ bool ShaderProgram::bind() const
     return true;
 }
 
+void ShaderProgram::reload()
+{
+    GLuint progID = loadProgram();
+    if (progID != 0) {
+        glDeleteProgram(_progID);
+        _progID = progID;
+    }
+}
+
 GLint ShaderProgram::getULoc(const char* uniformName) const {
     GLint uniformLocation = glGetUniformLocation(_progID, uniformName);
     if (uniformLocation == -1) {
@@ -45,13 +57,12 @@ GLint ShaderProgram::getULoc(const char* uniformName) const {
     return uniformLocation;
 }
 
-GLuint ShaderProgram::loadProgram(const std::string& vertPath, const std::string& fragPath,
-                                  const std::string& geomPath)
+GLuint ShaderProgram::loadProgram()
 {
     GLuint progID = glCreateProgram();
 
     //Load and attacth shaders
-    GLuint vertexShader = loadShaderFromFile(vertPath, GL_VERTEX_SHADER);
+    GLuint vertexShader = loadShaderFromFile(_vertPath, GL_VERTEX_SHADER);
     if (vertexShader == 0) {
         glDeleteProgram(progID);
         progID = 0;
@@ -60,8 +71,8 @@ GLuint ShaderProgram::loadProgram(const std::string& vertPath, const std::string
     glAttachShader(progID, vertexShader);
 
     GLuint geometryShader = 0;
-    if (!geomPath.empty()) {
-        geometryShader = loadShaderFromFile(geomPath, GL_GEOMETRY_SHADER);
+    if (!_geomPath.empty()) {
+        geometryShader = loadShaderFromFile(_geomPath, GL_GEOMETRY_SHADER);
         if (geometryShader == 0) {
             glDeleteShader(vertexShader);
             glDeleteProgram(progID);
@@ -71,7 +82,7 @@ GLuint ShaderProgram::loadProgram(const std::string& vertPath, const std::string
         glAttachShader(progID, geometryShader);
     }
 
-    GLuint fragmentShader = loadShaderFromFile(fragPath, GL_FRAGMENT_SHADER);
+    GLuint fragmentShader = loadShaderFromFile(_fragPath, GL_FRAGMENT_SHADER);
     if (fragmentShader == 0) {
         glDeleteShader(vertexShader);
         glDeleteShader(geometryShader);
@@ -101,7 +112,7 @@ GLuint ShaderProgram::loadProgram(const std::string& vertPath, const std::string
     glDeleteShader(geometryShader);
     glDeleteShader(fragmentShader);
 
-    cout << "[shader] Shader loaded" << endl;
+    cout << "[shader] Shader " << progID << " loaded" << endl;
 
     return progID;
 }
