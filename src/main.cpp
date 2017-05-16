@@ -30,6 +30,15 @@ namespace {
     const static char* WINDOW_TITLE = "skunkwork";
 }
 
+void keyCallback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t action,
+                 int32_t mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    else
+        ImGui_ImplGlfwGL3_KeyCallback(window, key, scancode, action, mods);
+}
+
 void windowSizeCallback(GLFWwindow* window, int width, int height)
 {
     (void) window;
@@ -72,7 +81,6 @@ int main()
         cerr << "Error creating GLFW-window!" << endl;
         exit(EXIT_FAILURE);
     }
-    glfwSetWindowSizeCallback(windowPtr, windowSizeCallback);
     glfwMakeContextCurrent(windowPtr);
 
     // Init GL
@@ -109,6 +117,10 @@ int main()
     logger.AddLog("[gl] Context: %s\n     GLSL: %s\n",
                    glGetString(GL_VERSION),
                    glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+    // Set glfw-callbacks
+    glfwSetWindowSizeCallback(windowPtr, windowSizeCallback);
+    glfwSetKeyCallback(windowPtr, keyCallback);// Override imgui's callback
 
     // Capture cout for logging
     std::stringstream logCout;
