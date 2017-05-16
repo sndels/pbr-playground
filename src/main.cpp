@@ -11,6 +11,7 @@
 #include <sstream>
 
 #include "logger.hpp"
+#include "quad.hpp"
 #include "shaderProgram.hpp"
 
 using std::cout;
@@ -101,6 +102,7 @@ int main()
     fragPath += "shader/basic_frag.glsl";
     ShaderProgram s(vertPath, fragPath);
 
+    Quad q;
     // Run the main loop
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
@@ -116,6 +118,11 @@ int main()
                 logCout.str("");
             }
             logger.Draw();
+        }
+
+        if (s.isLinked()) {
+            s.bind();
+            q.render();
         }
 
         ImGui::Render();
