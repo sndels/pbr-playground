@@ -13,6 +13,7 @@
 #include "logger.hpp"
 #include "quad.hpp"
 #include "shaderProgram.hpp"
+#include "timer.hpp"
 
 using std::cout;
 using std::cerr;
@@ -103,6 +104,7 @@ int main()
     ShaderProgram s(vertPath, fragPath);
 
     Quad q;
+    Timer rT;
     // Run the main loop
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
@@ -118,6 +120,12 @@ int main()
                 logCout.str("");
             }
             logger.Draw();
+        }
+
+        // Try reloading the shader every 0.5s
+        if (rT.getSeconds() > 0.5f) {
+            s.reload();
+            rT.reset();
         }
 
         if (s.isLinked()) {
