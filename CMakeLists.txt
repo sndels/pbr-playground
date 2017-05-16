@@ -21,6 +21,7 @@ endif()
 
 find_package(OpenGL REQUIRED)
 find_package(GLFW REQUIRED)
+find_package(GLM REQUIRED)
 
 file(GLOB_RECURSE SOURCES src/*.cpp)
 file(GLOB_RECURSE HEADERS include/*.hpp)
@@ -40,6 +41,7 @@ add_executable(skunkwork WIN32
 target_include_directories(skunkwork
     PRIVATE
     ${GLFW_INCLUDE_DIR}
+    ${GLM_INCLUDE_DIR}
 )
 
 target_link_libraries(skunkwork
