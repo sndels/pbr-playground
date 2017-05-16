@@ -114,6 +114,7 @@ int main()
 
     Quad q;
     Timer rT;
+    Timer gT;
     // Run the main loop
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
@@ -139,6 +140,7 @@ int main()
 
         if (s.isLinked()) {
             s.bind();
+            glUniform1f(s.getULoc("uGT"), gT.getSeconds());
             q.render();
         }
 
