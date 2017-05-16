@@ -20,9 +20,17 @@ using std::cerr;
 using std::endl;
 
 namespace {
-    const static GLsizei XRES = 1280;
-    const static GLsizei YRES = 720;
+    GLsizei XRES = 1280;
+    GLsizei YRES = 720;
     const static char* WINDOW_TITLE = "skunkwork";
+}
+
+void windowSizeCallback(GLFWwindow* window, int width, int height)
+{
+    (void) window;
+    XRES = width;
+    YRES = height;
+    glViewport(0, 0, XRES, YRES);
 }
 
 static void errorCallback(int error, const char* description)
@@ -59,6 +67,7 @@ int main()
         cerr << "Error creating GLFW-window!" << endl;
         exit(EXIT_FAILURE);
     }
+    glfwSetWindowSizeCallback(windowPtr, windowSizeCallback);
     glfwMakeContextCurrent(windowPtr);
 
     // Init GL
