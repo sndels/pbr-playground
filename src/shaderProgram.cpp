@@ -21,11 +21,10 @@ time_t getMod(const std::string& path) {
 ShaderProgram::ShaderProgram(const std::string& vertPath, const std::string& fragPath,
                              const std::string& geomPath) :
     _progID(0),
-    _vertPath(vertPath),
-    _geomPath(geomPath),
-    _fragPath(fragPath)
+    _filePaths(3),
+    _fileMods(3)
 {
-    GLuint progID = loadProgram();
+    GLuint progID = loadProgram(vertPath, fragPath, geomPath);
     if (progID != 0) _progID = progID;
 }
 
@@ -55,13 +54,18 @@ bool ShaderProgram::bind() const
 void ShaderProgram::reload()
 {
     // Reload shaders if some was modified
-    if (getMod(_fragPath) != _fragMod ||
-        getMod(_vertPath) != _vertMod ||
-        (_geomPath.length() > 0 && getMod(_geomPath) != _geomMod)) {
-        GLuint progID = loadProgram();
-        if (progID != 0) {
-            glDeleteProgram(_progID);
-            _progID = progID;
+    for (auto j = 0u; j < 3; ++j) {
+        for (auto i = 0u; i < _filePaths[j].size(); ++i) {
+            if (_fileMods[j][i] != getMod(_filePaths[j][i])) {
+                GLuint progID = loadProgram(_filePaths[1].size() > 0 ? _filePaths[1][0] : "",
+                                            _filePaths[0].size() > 0 ? _filePaths[0][0] : "",
+                                            _filePaths[2].size() > 0 ? _filePaths[2][0] : "");
+                if (progID != 0) {
+                    glDeleteProgram(_progID);
+                    _progID = progID;
+                }
+                return;
+            }
         }
     }
 }
@@ -74,17 +78,18 @@ GLint ShaderProgram::getULoc(const char* uniformName) const {
     return uniformLocation;
 }
 
-GLuint ShaderProgram::loadProgram()
+GLuint ShaderProgram::loadProgram(const std::string vertPath, const std::string fragPath,
+                                  const std::string geomPath)
 {
+    // Clear vectors
+    for (auto& v : _filePaths) v.clear();
+    for (auto& v : _fileMods) v.clear();
+
+    // Get a program id
     GLuint progID = glCreateProgram();
 
-    // Update file timestamps
-    _vertMod = getMod(_vertPath);
-    if (_geomPath.length() > 0) _geomMod = getMod(_geomPath);
-    _fragMod = getMod(_fragPath);
-
     //Load and attacth shaders
-    GLuint vertexShader = loadShaderFromFile(_vertPath, GL_VERTEX_SHADER);
+    GLuint vertexShader = loadShader(vertPath, GL_VERTEX_SHADER);
     if (vertexShader == 0) {
         glDeleteProgram(progID);
         progID = 0;
@@ -93,8 +98,8 @@ GLuint ShaderProgram::loadProgram()
     glAttachShader(progID, vertexShader);
 
     GLuint geometryShader = 0;
-    if (!_geomPath.empty()) {
-        geometryShader = loadShaderFromFile(_geomPath, GL_GEOMETRY_SHADER);
+    if (!geomPath.empty()) {
+        geometryShader = loadShader(geomPath, GL_GEOMETRY_SHADER);
         if (geometryShader == 0) {
             glDeleteShader(vertexShader);
             glDeleteProgram(progID);
@@ -104,7 +109,7 @@ GLuint ShaderProgram::loadProgram()
         glAttachShader(progID, geometryShader);
     }
 
-    GLuint fragmentShader = loadShaderFromFile(_fragPath, GL_FRAGMENT_SHADER);
+    GLuint fragmentShader = loadShader(fragPath, GL_FRAGMENT_SHADER);
     if (fragmentShader == 0) {
         glDeleteShader(vertexShader);
         glDeleteShader(geometryShader);
@@ -139,15 +144,13 @@ GLuint ShaderProgram::loadProgram()
     return progID;
 }
 
-GLuint ShaderProgram::loadShaderFromFile(const std::string& path, GLenum shaderType)
+GLuint ShaderProgram::loadShader(const std::string& mainPath, GLenum shaderType)
 {
     GLuint shaderID = 0;
-    std::ifstream sourceFile(path.c_str());
-    if (sourceFile) {
-        std::string shaderString((std::istreambuf_iterator<char>(sourceFile)),
-                                  std::istreambuf_iterator<char>());
+    std::string shaderStr = parseFromFile(mainPath, shaderType);
+    if (!shaderStr.empty()){
         shaderID = glCreateShader(shaderType);
-        const GLchar* shaderSource = shaderString.c_str();
+        const GLchar* shaderSource = shaderStr.c_str();
         glShaderSource(shaderID, 1, &shaderSource, NULL);
         glCompileShader(shaderID);
         GLint shaderCompiled = GL_FALSE;
@@ -157,10 +160,43 @@ GLuint ShaderProgram::loadShaderFromFile(const std::string& path, GLenum shaderT
             printShaderLog(shaderID);
             shaderID = 0;
         }
-    } else {
-        cout << "Unable to open file " << path << endl;
     }
     return shaderID;
+}
+
+std::string ShaderProgram::parseFromFile(const std::string& filePath, GLenum shaderType)
+{
+    std::ifstream sourceFile(filePath.c_str());
+    std::string shaderStr;
+    if (sourceFile) {
+        // Push filePath and timestamp to vectors
+        if (shaderType == GL_FRAGMENT_SHADER) {
+            _filePaths[0].emplace_back(filePath);
+            _fileMods[0].emplace_back(getMod(filePath));
+        } else if (shaderType == GL_VERTEX_SHADER) {
+            _filePaths[1].emplace_back(filePath);
+            _fileMods[1].emplace_back(getMod(filePath));
+        } else {
+            _filePaths[2].emplace_back(filePath);
+            _fileMods[2].emplace_back(getMod(filePath));
+        }
+        // Get directory path for the file for possible includes
+        std::string dirPath(filePath);
+        dirPath.erase(dirPath.find_last_of('/') + 1);
+        for (std::string line; std::getline(sourceFile, line);) {
+            // Handle recursive includes, expect correct syntax
+            if (line.compare(0, 9, "#include ") == 0) {
+                line.erase(0, 10);
+                line.pop_back();
+                line = parseFromFile(dirPath + line, shaderType);
+                if (line.empty()) return "";
+            }
+            shaderStr += line + '\n';
+        }
+    } else {
+        cout << "Unable to open file " << filePath << endl;
+    }
+    return shaderStr;
 }
 
 void ShaderProgram::printProgramLog(GLuint program) const

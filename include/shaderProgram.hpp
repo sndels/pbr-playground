@@ -18,18 +18,16 @@ public:
     GLint getULoc(const char* uniformName) const;
 
 private:
-    GLuint loadProgram();
-    GLuint loadShaderFromFile(const std::string& path, GLenum shaderType);
+    GLuint loadProgram(const std::string vertPath, const std::string fragPath,
+                       const std::string geomPath);
+    GLuint loadShader(const std::string& mainPath, GLenum shaderType);
+    std::string parseFromFile(const std::string& filePath, GLenum shaderType);
     void printProgramLog(GLuint program) const;
     void printShaderLog(GLuint shader) const;
 
-    GLuint _progID;
-    std::string _vertPath;
-    std::string _geomPath;
-    std::string _fragPath;
-    time_t      _vertMod;
-    time_t      _geomMod;
-    time_t      _fragMod;
+    GLuint                                  _progID;
+    std::vector<std::vector<std::string> >  _filePaths;
+    std::vector<std::vector<time_t> >       _fileMods;
 
 };
 
