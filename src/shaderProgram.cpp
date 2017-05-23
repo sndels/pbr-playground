@@ -1,7 +1,9 @@
 #include "shaderProgram.hpp"
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <sstream>
+#include <stack>
 #include <sys/stat.h>
 
 using std::cout;
@@ -169,7 +171,7 @@ std::string ShaderProgram::parseFromFile(const std::string& filePath, GLenum sha
     std::ifstream sourceFile(filePath.c_str());
     std::string shaderStr;
     if (sourceFile) {
-        // Push filePath and timestamp to vectors
+        // Push filepath and timestamp to vectors
         if (shaderType == GL_FRAGMENT_SHADER) {
             _filePaths[0].emplace_back(filePath);
             _fileMods[0].emplace_back(getMod(filePath));
@@ -180,9 +182,15 @@ std::string ShaderProgram::parseFromFile(const std::string& filePath, GLenum sha
             _filePaths[2].emplace_back(filePath);
             _fileMods[2].emplace_back(getMod(filePath));
         }
+
         // Get directory path for the file for possible includes
         std::string dirPath(filePath);
         dirPath.erase(dirPath.find_last_of('/') + 1);
+
+        // Mark file start for error parsing
+        shaderStr += "// File: " + filePath + '\n';
+
+        // Parse lines
         for (std::string line; std::getline(sourceFile, line);) {
             // Handle recursive includes, expect correct syntax
             if (line.compare(0, 9, "#include ") == 0) {
@@ -193,6 +201,9 @@ std::string ShaderProgram::parseFromFile(const std::string& filePath, GLenum sha
             }
             shaderStr += line + '\n';
         }
+
+        // Mark file end for error parsing
+        shaderStr += "// File: " + filePath + '\n';
     } else {
         cout << "Unable to open file " << filePath << endl;
     }
@@ -218,14 +229,78 @@ void ShaderProgram::printProgramLog(GLuint program) const
 void ShaderProgram::printShaderLog(GLuint shader) const
 {
     if (glIsShader(shader) == GL_TRUE) {
+        // Get errors to a stream
         GLint maxLength = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
         char* errorLog = new char[maxLength];
         glGetShaderInfoLog(shader, maxLength, &maxLength, errorLog);
-        for (auto i = 0; i < maxLength; ++i)
-            cout << errorLog[i];
+        std::istringstream errorStream(errorLog);
+
+        // Get source string
+        glGetShaderiv(shader, GL_SHADER_SOURCE_LENGTH, &maxLength);
+        char* shaderStr = new char[maxLength];
+        glGetShaderSource(shader, maxLength, &maxLength, shaderStr);
+
+        std::string lastFile;
+        // Parse correct file and line numbers to errors
+        for (std::string errLine; std::getline(errorStream, errLine);) {
+
+#ifdef _WIN32
+            // Only parse if error points to a line
+            if (errLine.compare(0, 2, "0(") == 0) {
+                // Extract error line in parsed source
+                auto lineNumEnd = errLine.find(')', 3);
+                uint32_t lineNum = std::stoi(errLine.substr(2, lineNumEnd - 1));
+#else
+            if (errLine.compare(0, 9, "ERROR: 0:") == 0) {
+                auto lineNumEnd = errLine.find(": ", 10);
+                uint32_t lineNum = std::stoi(errLine.substr(9, lineNumEnd - 1));
+#endif // _WIN32
+
+                std::stack<std::string> files;
+                std::stack<uint32_t> lines;
+                // Parse the source to error, track file and line in file
+                std::istringstream sourceStream(shaderStr);
+                for (auto i = 0u; i < lineNum; ++i) {
+                    std::string srcLine;
+                    std::getline(sourceStream, srcLine);
+                    if (srcLine.compare(0, 9, "// File: ") == 0) {
+                        srcLine.erase(0, 9);
+                        // If include-block ends, pop file and it's lines from stacks
+                        if (!files.empty() && srcLine.compare(files.top()) == 0) {
+                            files.pop();
+                            lines.pop();
+                        } else {// Push new file block to stacks
+                            files.push(srcLine);
+                            lines.push(0);
+                        }
+                    } else {
+                        ++lines.top();
+                    }
+                }
+
+                // Print the file if it changed from last error
+                if (lastFile.empty() || lastFile.compare(files.top()) != 0) {
+                    cout << endl << "In file " << files.top() << endl;
+                    lastFile = files.top();
+                }
+
+#ifdef _WIN32
+                // Insert the correct line number to error and print
+                errLine.erase(2, lineNumEnd - 2);
+                errLine.insert(2, std::to_string(lines.top()));
+#else
+                errLine.erase(9, lineNumEnd - 9);
+                errLine.insert(9, std::to_string(lines.top()));
+#endif // _WIN32
+
+            }
+            cout << errLine << endl;
+        }
         cout << endl;
+
         delete[] errorLog;
+        delete[] shaderStr;
     } else {
         cout << "ID " << shader << " is not a shader" << endl;
     }

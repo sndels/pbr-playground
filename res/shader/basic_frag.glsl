@@ -1,5 +1,7 @@
 #version 410
 
+#include "hg_sdf.glsl"
+
 uniform float uGT;
 uniform vec2  uRes;
 
