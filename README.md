@@ -7,6 +7,7 @@ Building skunkwork requires OpenGL, [GLFW3](http://www.glfw.org) and
 [GLM](http://glm.g-truc.net/0.9.8/index.html) with CMake being able to find
 them. [dear imgui](https://github.com/ocornut/imgui) and
 [pre-generated gl3w](https://github.com/sndels/libgl3w) are provided as submodules.
+MERCURY's [HG_SDF](http://mercury.sexy/hg_sdf) is also included.
 
 ## Building
 The CMake-build should work^tm on Sierra (make + AppleClang, Xcode) and Windows 10
