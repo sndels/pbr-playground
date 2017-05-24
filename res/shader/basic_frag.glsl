@@ -1,9 +1,7 @@
 #version 410
 
 #include "hg_sdf.glsl"
-
-uniform float uGT;
-uniform vec2  uRes;
+#include "uniforms.glsl"
 
 out vec4 fragColor;
 
