@@ -72,9 +72,9 @@ void ShaderProgram::reload()
     }
 }
 
-GLint ShaderProgram::getULoc(const char* uniformName) const {
+GLint ShaderProgram::getULoc(const char* uniformName, bool debug) const {
     GLint uniformLocation = glGetUniformLocation(_progID, uniformName);
-    if (uniformLocation == -1) {
+    if (debug && uniformLocation == -1) {
         cout << "[shader] " <<  uniformName << " is not a valid shader variable" << endl;
     }
     return uniformLocation;

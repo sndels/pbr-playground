@@ -69,5 +69,5 @@ void main()
         return;
     }
 
-    fragColor = vec4(rd, uGT);
+    fragColor = vec4(rd, 1);
 }
