@@ -67,5 +67,5 @@ void main()
         return;
     }
 
-    fragColor = vec4(rd, 1);
+    fragColor = vec4(rd + 0.5 * vec3(uMPos.x, 0, uMPos.y), 1);
 }

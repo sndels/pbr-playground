@@ -22,12 +22,13 @@ using std::cerr;
 using std::endl;
 
 namespace {
+    const static char* WINDOW_TITLE = "skunkwork";
     GLsizei XRES = 1280;
     GLsizei YRES = 720;
     float LOGW = 600.f;
     float LOGH = 200.f;
     float LOGM = 10.f;
-    const static char* WINDOW_TITLE = "skunkwork";
+    glm::vec2 CURSOR_POS(0,0);
 }
 
 void keyCallback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t action,
@@ -37,6 +38,24 @@ void keyCallback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t acti
         glfwSetWindowShouldClose(window, GL_TRUE);
     else
         ImGui_ImplGlfwGL3_KeyCallback(window, key, scancode, action, mods);
+}
+
+void cursorCallback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+        CURSOR_POS = glm::vec2(2 * xpos / XRES - 1.0, 2 * (YRES - ypos) / YRES - 1.0);
+    }
+}
+
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (ImGui::IsMouseHoveringAnyWindow()) {
+        ImGui_ImplGlfwGL3_MouseButtonCallback(window, button, action, mods);
+    } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        CURSOR_POS = glm::vec2(2 * xpos / XRES - 1.0, 2 * (YRES - ypos) / YRES - 1.0);
+    }
 }
 
 void windowSizeCallback(GLFWwindow* window, int width, int height)
@@ -118,9 +137,11 @@ int main()
                    glGetString(GL_VERSION),
                    glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-    // Set glfw-callbacks
+    // Set glfw-callbacks, these will pass to imgui's callbacks if overridden
     glfwSetWindowSizeCallback(windowPtr, windowSizeCallback);
-    glfwSetKeyCallback(windowPtr, keyCallback);// Override imgui's callback
+    glfwSetKeyCallback(windowPtr, keyCallback);
+    glfwSetCursorPosCallback(windowPtr, cursorCallback);
+    glfwSetMouseButtonCallback(windowPtr, mouseButtonCallback);
 
     // Capture cout for logging
     std::stringstream logCout;
@@ -168,6 +189,7 @@ int main()
             glUniform1f(s.getULoc("uGT"), gT.getSeconds());
             glm::vec2 res(XRES,YRES);
             glUniform2fv(s.getULoc("uRes"), 1, glm::value_ptr(res));
+            glUniform2fv(s.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
             q.render();
         }
 
