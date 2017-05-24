@@ -1,6 +1,9 @@
 # skunkwork
-A lightweight framework for fooling around with GLSL-shaders. Mainly designed for
-ray marching.
+A lightweight framework for fooling around with GLSL-shaders, mainly designed for
+ray marching. Current features:
+  * includes in glsl
+  * log window with correctly parsed shader errors even with includes
+  * auto-reloading shaders when sources are saved
 
 ## Dependencies
 Building skunkwork requires OpenGL, [GLFW3](http://www.glfw.org) and
