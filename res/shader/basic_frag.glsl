@@ -1,7 +1,13 @@
 #version 410
 
+// Lights (shading.glsl uses NUM_LIGHTS)
+const int NUM_LIGHTS = 1;
+vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(4, 4, -4));
+vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(3));
+
 #include "hg_sdf.glsl"
 #include "uniforms.glsl"
+#include "shading.glsl"
 
 out vec4 fragColor;
 
@@ -38,6 +44,15 @@ float fScene(vec3 p)
     return fSphere(p - spherePos, 0.75);
 }
 
+vec3 getN(vec3 p)
+{
+    vec3 e = vec3(EPSILON, 0, 0);
+    vec3 n = vec3(fScene(vec3(p + e.xyy)) - fScene(vec3(p - e.xyy)),
+                  fScene(vec3(p + e.yxy)) - fScene(vec3(p - e.yxy)),
+                  fScene(vec3(p + e.yyx)) - fScene(vec3(p - e.yyx)));
+    return normalize(n);
+}
+
 float castRay(vec3 rd, vec3 ro)
 {
     float depth = MIN_DIST;
@@ -67,5 +82,13 @@ void main()
         return;
     }
 
-    fragColor = vec4(rd + 0.5 * vec3(uMPos.x, 0, uMPos.y), 1);
+    // Calculate ray to hit
+    vec3 p = CAM_POS + depth * rd;
+
+    // Directions to lights from hit
+    vec3 lVecs[NUM_LIGHTS];
+    for (int i = 0; i < NUM_LIGHTS; ++i) lVecs[i] = normalize(LIGHT_POS[i] - p);
+
+    // Evaluate final shading
+    fragColor = vec4(evalLighting(-rd, getN(p), vec3(1), lVecs, LIGHT_INT), 1);
 }
