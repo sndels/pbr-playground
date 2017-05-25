@@ -2,8 +2,8 @@
 
 // Lights (shading.glsl uses NUM_LIGHTS)
 const int NUM_LIGHTS = 1;
-vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(4, 4, -4));
-vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(3));
+vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(1, 1, -3));
+vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(1));
 
 #include "hg_sdf.glsl"
 #include "uniforms.glsl"
@@ -22,6 +22,13 @@ vec3  CAM_POS = vec3(0, 0, -3);
 vec3  CAM_TARGET = CAM_POS + vec3(0, 0, 1);
 vec3  CAM_UP = vec3(0, 1, 0);
 float CAM_FOV = 65;
+
+
+// Material
+const int NUM_MATERIALS = 1;
+vec3      ALBEDO[NUM_MATERIALS] = vec3[](vec3(1, 0, 0));
+float     ROUGHNESS[NUM_MATERIALS] = float[](0.3);
+float     METAL[NUM_MATERIALS] = float[](0);
 
 mat3 camOrient(vec3 eye, vec3 target, vec3 up)
 {
@@ -90,5 +97,6 @@ void main()
     for (int i = 0; i < NUM_LIGHTS; ++i) lVecs[i] = normalize(LIGHT_POS[i] - p);
 
     // Evaluate final shading
-    fragColor = vec4(evalLighting(-rd, getN(p), vec3(1), lVecs, LIGHT_INT), 1);
+    fragColor = vec4(evalLighting(-rd, getN(p), lVecs, LIGHT_INT,
+                                  ALBEDO[0], ROUGHNESS[0], METAL[0]), 1);
 }
