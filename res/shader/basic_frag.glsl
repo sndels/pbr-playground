@@ -2,8 +2,8 @@
 
 // Lights (shading.glsl uses NUM_LIGHTS)
 const int NUM_LIGHTS = 1;
-vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(1, 1, -3));
-vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(1));
+vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(5, 5, -10));
+vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(200));
 
 #include "hg_sdf.glsl"
 #include "uniforms.glsl"
@@ -102,11 +102,16 @@ void main()
     float rough = ROUGHNESS[ACTIVE_MATERIAL];
     float metal = METAL[ACTIVE_MATERIAL];
 
-    // Directions to lights from hit
-    vec3 lVecs[NUM_LIGHTS];
-    for (int i = 0; i < NUM_LIGHTS; ++i) lVecs[i] = normalize(LIGHT_POS[i] - p);
+    // Directions to lights from hit + intensities at hit
+    vec3 lVecs[NUM_LIGHTS], lInts[NUM_LIGHTS];
+    for (int i = 0; i < NUM_LIGHTS; ++i) {
+        vec3 toLight = LIGHT_POS[i] - p;
+        float lightDist = length(toLight);
+        lVecs[i] = toLight / lightDist;
+        lInts[i] = LIGHT_INT[i] / (lightDist * lightDist);
+    }
 
     // Evaluate final shading
-    fragColor = vec4(evalLighting(-rd, getN(p), lVecs, LIGHT_INT,
+    fragColor = vec4(evalLighting(-rd, getN(p), lVecs, lInts,
                                   albedo, rough, metal), 1);
 }
