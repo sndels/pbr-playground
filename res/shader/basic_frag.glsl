@@ -1,13 +1,17 @@
 #version 410
 
+// These two should be included first
+#include "uniforms.glsl"
+#include "definitions.glsl"
+
 // Lights (shading.glsl uses NUM_LIGHTS)
 const int NUM_LIGHTS = 1;
-vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(5, 5, -10));
+vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(5, 5, -8));
 vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(200));
 
 #include "hg_sdf.glsl"
-#include "uniforms.glsl"
 #include "shading.glsl"
+#include "materials.glsl"
 
 out vec4 fragColor;
 
@@ -25,12 +29,7 @@ float CAM_FOV = 65;
 
 
 // Material
-const int NUM_MATERIALS = 2;
-int       ACTIVE_MATERIAL = 0;
-vec3      ALBEDO[NUM_MATERIALS] = vec3[](vec3(1, 0, 0),
-                                         vec3(0.2));
-float     ROUGHNESS[NUM_MATERIALS] = float[](0.3, 1);
-float     METAL[NUM_MATERIALS] = float[](0, 0);
+float ACTIVE_MATERIAL = 0;
 
 mat3 camOrient(vec3 eye, vec3 target, vec3 up)
 {
@@ -98,9 +97,13 @@ void main()
     vec3 p = CAM_POS + depth * rd;
 
     // Retrieve material for hit
-    vec3 albedo = ALBEDO[ACTIVE_MATERIAL];
-    float rough = ROUGHNESS[ACTIVE_MATERIAL];
-    float metal = METAL[ACTIVE_MATERIAL];
+    Material mat;
+    if (ACTIVE_MATERIAL < 1) {
+        mat = brushedAlu;
+    } else {
+        mat = sand;
+        mat.metalness = 0.01 * (sin(p.x * 4000000) + sin(p.z * 4000000)) * depth;
+    }
 
     // Directions to lights from hit + intensities at hit
     vec3 lVecs[NUM_LIGHTS], lInts[NUM_LIGHTS];
@@ -112,6 +115,5 @@ void main()
     }
 
     // Evaluate final shading
-    fragColor = vec4(evalLighting(-rd, getN(p), lVecs, lInts,
-                                  albedo, rough, metal), 1);
+    fragColor = vec4(evalLighting(-rd, getN(p), lVecs, lInts, mat), 1);
 }

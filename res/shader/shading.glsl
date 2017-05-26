@@ -33,11 +33,11 @@ vec3 cookTorranceBRDF(float NoL, float NoV, float NoH, float VoH, vec3 F, float 
 }
 
 vec3 evalLighting(vec3 v, vec3 n, vec3 lVecs[NUM_LIGHTS], vec3 lInt[NUM_LIGHTS],
-                  vec3 albedo, float rough, float metal)
+                  Material mat)
 {
     vec3 sumCol = vec3(0);
     // Default fresnel
-    vec3 f0 = mix(vec3(0.04), albedo, metal);
+    vec3 f0 = mix(vec3(0.04), mat.albedo, mat.metalness);
     float NoV = max(dot(n, v), 0);
     for (int i = 0; i < NUM_LIGHTS; ++i) {
         // Dot products
@@ -51,11 +51,12 @@ vec3 evalLighting(vec3 v, vec3 n, vec3 lVecs[NUM_LIGHTS], vec3 lInt[NUM_LIGHTS],
 
         // Diffuse amount
         vec3 Ks = F;
-        vec3 Kd = (1 - Ks) * (1 - metal);
+        vec3 Kd = (1 - Ks) * (1 - mat.metalness);
 
         // Add light's contribution
-        sumCol += (Kd * lambertBRFD(albedo) +
-                   cookTorranceBRDF(NoL, NoV, NoH, VoH, F, rough)) * lInt[i] * NoL;
+        sumCol += (Kd * lambertBRFD(mat.albedo) +
+                   cookTorranceBRDF(NoL, NoV, NoH, VoH, F, mat.roughness)) *
+                  lInt[i] * NoL;
     }
 
     // Tone mapping (Uncharted 2)
