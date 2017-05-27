@@ -100,10 +100,10 @@ void main()
     // Retrieve material for hit
     Material mat;
     if (ACTIVE_MATERIAL < 1) {
-        mat = mixMaterials(redPaint, brushedAlu, clamp(pow(6 * fbm(p * 1.5 + uGT * 0.1), 10), 0, 1));
+        mat = mixMaterials(steel, rust, clamp(pow(4 * fbm(p + 0.4), 8), 0, 1));
     } else {
         mat = sand;
-        mat.metalness = 0.5 * clamp(fbm(p * 50), 0, 1);
+        mat.metalness = 0.5 * clamp(fbm(p * 0.15 - vec3(0, sin(uGT * 0.2), uGT * 0.2)), 0, 1);
     }
 
     // Directions to lights from hit + intensities at hit
