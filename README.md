@@ -13,8 +13,8 @@ them. [dear imgui](https://github.com/ocornut/imgui) and
 MERCURY's [HG_SDF](http://mercury.sexy/hg_sdf) is also included.
 
 ## Building
-The CMake-build should work^tm on Sierra (make + AppleClang, Xcode) and Windows 10
-(Visual Studio 2017). Submodules need be pulled before running cmake:
+The CMake-build should work^tm on Sierra (make + AppleClang, Xcode), Linux (clang) and Windows 10 (Visual Studio 2017). Submodules need be pulled
+before running cmake:
 ```
 git submodule init
 git submodule update
