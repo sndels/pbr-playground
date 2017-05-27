@@ -12,6 +12,7 @@ vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(200));
 #include "hg_sdf.glsl"
 #include "shading.glsl"
 #include "materials.glsl"
+#include "noise.glsl"
 
 out vec4 fragColor;
 
@@ -99,10 +100,10 @@ void main()
     // Retrieve material for hit
     Material mat;
     if (ACTIVE_MATERIAL < 1) {
-        mat = brushedAlu;
+        mat = mixMaterials(redPaint, brushedAlu, clamp(pow(6 * fbm(p * 1.5 + uGT * 0.1), 10), 0, 1));
     } else {
         mat = sand;
-        mat.metalness = 0.01 * (sin(p.x * 4000000) + sin(p.z * 4000000)) * depth;
+        mat.metalness = 0.5 * clamp(fbm(p * 50), 0, 1);
     }
 
     // Directions to lights from hit + intensities at hit
