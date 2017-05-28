@@ -17,8 +17,10 @@ MERCURY's [HG_SDF](http://mercury.sexy/hg_sdf) is included for CSG.
 ## Dependencies
 Building skunkwork requires OpenGL, [GLFW3](http://www.glfw.org) and
 [GLM](http://glm.g-truc.net/0.9.8/index.html) with CMake being able to find
-them. [dear imgui](https://github.com/ocornut/imgui) and
-[pre-generated gl3w](https://github.com/sndels/libgl3w) are provided as submodules.
+them. BASS is also required and it can be downloaded [here](https://www.un4seen.com/bass.html).
+Just drop the header and dylib/so/lib into `ext/bass/`. [dear imgui](https://github.com/ocornut/imgui),
+[rocket-client](https://github.com/rocket/rocket),
+and [pre-generated gl3w](https://github.com/sndels/libgl3w) are provided as submodules.
 
 ## Building
 The CMake-build should work^tm on Sierra (make + AppleClang, Xcode), Linux (clang) and Windows 10 (Visual Studio 2017). Submodules need be pulled
