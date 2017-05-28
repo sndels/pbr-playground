@@ -60,5 +60,6 @@ void Texture::resize(uint32_t w, uint32_t h)
 
 void Texture::genMipmap()
 {
-    glGenerateTextureMipmap(_texID);
+    glBindTexture(GL_TEXTURE_2D, _texID);
+    glGenerateMipmap(GL_TEXTURE_2D);
 }

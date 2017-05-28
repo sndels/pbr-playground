@@ -15,6 +15,7 @@
 #include "logger.hpp"
 #include "quad.hpp"
 #include "shaderProgram.hpp"
+#include "texture.hpp"
 #include "timer.hpp"
 
 using std::cout;
@@ -112,9 +113,6 @@ int main()
 
     // Set vsync on
     glfwSwapInterval(1);
-
-    // Init GL settings
-    glViewport(0, 0, XRES, YRES);
     glClearColor(0.f, 0.f, 0.f, 1.f);
 
     GLenum error = glGetError();
@@ -147,14 +145,45 @@ int main()
     std::stringstream logCout;
     std::streambuf* oldCout = std::cout.rdbuf(logCout.rdbuf());
 
-    // Load shader
+    // Load shaders
     std::string vertPath(RES_DIRECTORY);
     vertPath += "shader/basic_vert.glsl";
-    std::string fragPath(RES_DIRECTORY);
-    fragPath += "shader/basic_frag.glsl";
-    ShaderProgram s(vertPath, fragPath);
+    std::string rmFragPath(RES_DIRECTORY);
+    rmFragPath += "shader/basic_frag.glsl";
+    ShaderProgram rmShader(vertPath, rmFragPath);
+
+    std::string fbmFragPath(RES_DIRECTORY);
+    fbmFragPath += "shader/fbm_frag.glsl";
+    ShaderProgram fbmShader(vertPath, fbmFragPath);
 
     Quad q;
+
+    // Generate fbm-texture in a framebuffer
+    uint32_t noiseW = 1024;
+    uint32_t noiseH = noiseW;
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    Texture fbmTex(noiseW, noiseH, TextureParams{GL_R32F, GL_RED, GL_FLOAT,
+                                                 GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
+                                                 GL_REPEAT, GL_REPEAT});
+    fbmTex.bindWrite(GL_COLOR_ATTACHMENT0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    // Generate noise to texture on gpu
+    glViewport(0, 0, noiseW, noiseH);
+    fbmShader.bind();
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glm::vec2 res(noiseW, noiseH);
+    glUniform2fv(fbmShader.getULoc("uRes"), 1, glm::value_ptr(res));
+    q.render();
+    fbmTex.genMipmap();
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    // Set actual viewport size
+    glViewport(0, 0, XRES, YRES);
+
     Timer rT;
     Timer gT;
     // Run the main loop
@@ -180,16 +209,17 @@ int main()
 
         // Try reloading the shader every 0.5s
         if (rT.getSeconds() > 0.5f) {
-            s.reload();
+            rmShader.reload();
             rT.reset();
         }
 
-        if (s.isLinked()) {
-            s.bind();
-            glUniform1f(s.getULoc("uGT"), gT.getSeconds());
+        if (rmShader.isLinked()) {
+            rmShader.bind();
+            glUniform1f(rmShader.getULoc("uGT"), gT.getSeconds());
             glm::vec2 res(XRES,YRES);
-            glUniform2fv(s.getULoc("uRes"), 1, glm::value_ptr(res));
-            glUniform2fv(s.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
+            glUniform2fv(rmShader.getULoc("uRes"), 1, glm::value_ptr(res));
+            glUniform2fv(rmShader.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
+            fbmTex.bindRead(GL_TEXTURE0, rmShader.getULoc("uFbmSampler"));
             q.render();
         }
 
@@ -202,5 +232,6 @@ int main()
     ImGui_ImplGlfwGL3_Shutdown();
     glfwDestroyWindow(windowPtr);
     glfwTerminate();
+    glDeleteBuffers(1, &fbo);
     exit(EXIT_SUCCESS);
 }
