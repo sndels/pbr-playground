@@ -19,3 +19,15 @@ target_link_libraries(imgui
     ${OPENGL_LIBRARIES}
     libgl3w
 )
+
+add_library(librocket
+    STATIC
+    rocket/lib/device.c
+    rocket/lib/track.c
+)
+if(MSVC)
+    target_link_libraries(librocket
+        PRIVATE
+        ws2_32.lib
+    )
+endif()
