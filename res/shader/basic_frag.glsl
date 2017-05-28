@@ -103,6 +103,9 @@ void main()
     Material mat;
     if (ACTIVE_MATERIAL < 1) {
         mat = mixMaterials(steel, rust, clamp(pow(4 * fbm(p + 0.4), 8), 0, 1));
+        if (mat.metalness < 0.9) {
+            mat.metalness += 0.5 * fbm(p * 8);
+        }
     } else {
         mat = sand;
         mat.metalness = 0.5 * clamp(fbm(p * 0.15 - vec3(0, sin(uGT * 0.2), uGT * 0.2)), 0, 1);
