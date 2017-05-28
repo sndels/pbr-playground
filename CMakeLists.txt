@@ -27,7 +27,7 @@ file(GLOB_RECURSE HEADERS include/*.hpp)
 
 add_subdirectory(ext)
 
-include_directories(include ext/rocket/lib)
+include_directories(include ext/rocket/lib ext/bass)
 
 # Add full path to res directory
 add_definitions(-DRES_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/res/")
@@ -52,7 +52,21 @@ target_link_libraries(skunkwork
     imgui
 )
 if (MSVC)
-    target_link_libraries(skunkwork PRIVATE ${GLFW_LIBRARIES})
+    target_link_libraries(skunkwork
+        PRIVATE
+        ${GLFW_LIBRARIES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/bass.lib
+    )
+elseif (APPLE)
+    target_link_libraries(skunkwork
+        PRIVATE
+        glfw
+        ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/libbass.dylib
+    )
 else()
-    target_link_libraries(skunkwork PRIVATE glfw)
+    target_link_libraries(skunkwork
+        PRIVATE
+        glfw
+        ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/libbass.so
+    )
 endif()
