@@ -4,3 +4,6 @@
 [submodule "ext/imgui"]
 	path = ext/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "ext/rocket"]
+	path = ext/rocket
+	url = https://github.com/kusma/rocket.git
