@@ -15,6 +15,7 @@
 #include <track.h>
 
 #include "audioStream.hpp"
+#include "frameBuffer.hpp"
 #include "logger.hpp"
 #include "quad.hpp"
 #include "shaderProgram.hpp"
@@ -186,24 +187,20 @@ int main()
     // Generate fbm-texture in a framebuffer
     uint32_t noiseW = 1024;
     uint32_t noiseH = noiseW;
-    GLuint fbo;
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
-    Texture fbmTex(noiseW, noiseH, TextureParams{GL_R32F, GL_RED, GL_FLOAT,
-                                                 GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
-                                                 GL_REPEAT, GL_REPEAT});
-    fbmTex.bindWrite(GL_COLOR_ATTACHMENT0);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    std::vector<TextureParams> fbmTexParams({{GL_R32F, GL_RED, GL_FLOAT,
+                                              GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
+                                              GL_REPEAT, GL_REPEAT}});
+    FrameBuffer fbmBuf(noiseW, noiseH, fbmTexParams);
 
     // Generate noise to texture on gpu
     glViewport(0, 0, noiseW, noiseH);
     fbmShader.bind();
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    fbmBuf.bindWrite();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glm::vec2 res(noiseW, noiseH);
     glUniform2fv(fbmShader.getULoc("uRes"), 1, glm::value_ptr(res));
     q.render();
-    fbmTex.genMipmap();
+    fbmBuf.genMipmap(0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     // Set actual viewport size
@@ -287,7 +284,8 @@ int main()
             glUniform2fv(rmShader.getULoc("uRes"), 1, glm::value_ptr(res));
             glUniform2fv(rmShader.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
             glUniform1f(rmShader.getULoc("uPulse"), (float)sync_get_val(pulse, syncRow));
-            fbmTex.bindRead(GL_TEXTURE0, rmShader.getULoc("uFbmSampler"));
+            fbmBuf.bindRead(std::vector<GLenum>({GL_TEXTURE0}),
+                            std::vector<GLint>({rmShader.getULoc("uFbmSampler")}));
             q.render();
         }
 
@@ -311,7 +309,6 @@ int main()
 
     glfwDestroyWindow(windowPtr);
     glfwTerminate();
-    glDeleteBuffers(1, &fbo);
 
     exit(EXIT_SUCCESS);
 }
