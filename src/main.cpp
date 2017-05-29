@@ -11,6 +11,7 @@
 #include <imgui_impl_glfw_gl3.h>
 #include <iostream>
 #include <sstream>
+#include <sync.h>
 
 #include "audioStream.hpp"
 #include "logger.hpp"
@@ -32,6 +33,13 @@ namespace {
     float LOGM = 10.f;
     glm::vec2 CURSOR_POS(0,0);
 }
+
+//Set up audio callbacks for rocket
+static struct sync_cb audioSync = {
+    AudioStream::pauseStream,
+    AudioStream::setStreamRow,
+    AudioStream::isStreamPlaying
+};
 
 void keyCallback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t action,
                  int32_t mods)
@@ -188,15 +196,37 @@ int main()
     // Set up audio
     std::string musicPath(RES_DIRECTORY);
     musicPath += "music/illegal_af.mp3";
-    AudioStream::getInstance().init(musicPath, 90.0, 8);
+    AudioStream::getInstance().init(musicPath, 174.0, 8);
+    int32_t streamHandle = AudioStream::getInstance().getStreamHandle();
+
+    // Set up rocket
+    sync_device *rocket = sync_create_device("sync");
+    if (!rocket) cout << "[rocket] failed to init" << endl;
+
+    // TODO: playback from file
+    int rocketConnected = sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
+    if (!rocketConnected)
+        cout << "[rocket] failed to connect" << endl;
+
+    // Set up sync tracks
+    const sync_track *pulse = sync_get_track(rocket, "pulse");
 
     Timer rT;
     Timer gT;
 
+    if (rocketConnected) AudioStream::getInstance().play();
     // Run the main loop
-    AudioStream::getInstance().play();
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
+
+        // Sync
+        double syncRow = 0.0;
+        if (rocketConnected) {
+            syncRow = AudioStream::getInstance().getRow();
+            if (sync_update(rocket, (int)floor(syncRow), &audioSync, (void *)&streamHandle))
+                sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT);
+        }
+
         ImGui_ImplGlfwGL3_NewFrame();
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -227,6 +257,8 @@ int main()
             glm::vec2 res(XRES,YRES);
             glUniform2fv(rmShader.getULoc("uRes"), 1, glm::value_ptr(res));
             glUniform2fv(rmShader.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
+            if (rocketConnected)
+                glUniform1f(rmShader.getULoc("uPulse"), (float)sync_get_val(pulse, syncRow));
             fbmTex.bindRead(GL_TEXTURE0, rmShader.getULoc("uFbmSampler"));
             q.render();
         }
@@ -235,11 +267,16 @@ int main()
         glfwSwapBuffers(windowPtr);
     }
 
+    // Save rocket tracks
+    sync_save_tracks(rocket);
+
     // Release resources
+    sync_destroy_device(rocket);
     std::cout.rdbuf(oldCout);
     ImGui_ImplGlfwGL3_Shutdown();
     glfwDestroyWindow(windowPtr);
     glfwTerminate();
     glDeleteBuffers(1, &fbo);
+
     exit(EXIT_SUCCESS);
 }

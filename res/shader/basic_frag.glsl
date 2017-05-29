@@ -51,7 +51,7 @@ vec3 getViewRay(vec2 fragCoord, vec2 resolution, float fov)
 
 float fScene(vec3 p)
 {
-    float sphereDist = fSphere(p - vec3(0), 0.75);
+    float sphereDist = fSphere(p - vec3(0), 0.75 + uPulse);
     float planeDist = fPlane(p, vec3(0, 1, 0), 2);
     ACTIVE_MATERIAL = sphereDist < planeDist ? 0 : 1;
     return min(sphereDist, planeDist);
