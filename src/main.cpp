@@ -21,6 +21,11 @@
 #include "texture.hpp"
 #include "timer.hpp"
 
+// Comment out to load sync from files
+#define TCPROCKET
+// Comment out to remove gui
+#define GUI
+
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -47,8 +52,10 @@ void keyCallback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t acti
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+#ifdef GUI
     else
         ImGui_ImplGlfwGL3_KeyCallback(window, key, scancode, action, mods);
+#endif // GUI
 }
 
 void cursorCallback(GLFWwindow* window, double xpos, double ypos)
@@ -60,9 +67,14 @@ void cursorCallback(GLFWwindow* window, double xpos, double ypos)
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
+#ifdef GUI
     if (ImGui::IsMouseHoveringAnyWindow()) {
         ImGui_ImplGlfwGL3_MouseButtonCallback(window, button, action, mods);
-    } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        return;
+    }
+#endif //GUI
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
         CURSOR_POS = glm::vec2(2 * xpos / XRES - 1.0, 2 * (YRES - ypos) / YRES - 1.0);
@@ -133,6 +145,7 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+#ifdef GUI
     // Setup imgui
     ImGui_ImplGlfwGL3_Init(windowPtr, true);
     ImGuiWindowFlags logWindowFlags= 0;
@@ -145,15 +158,17 @@ int main()
                    glGetString(GL_VERSION),
                    glGetString(GL_SHADING_LANGUAGE_VERSION));
 
+
+    // Capture cout for logging
+    std::stringstream logCout;
+    std::streambuf* oldCout = std::cout.rdbuf(logCout.rdbuf());
+#endif // GUI
+
     // Set glfw-callbacks, these will pass to imgui's callbacks if overridden
     glfwSetWindowSizeCallback(windowPtr, windowSizeCallback);
     glfwSetKeyCallback(windowPtr, keyCallback);
     glfwSetCursorPosCallback(windowPtr, cursorCallback);
     glfwSetMouseButtonCallback(windowPtr, mouseButtonCallback);
-
-    // Capture cout for logging
-    std::stringstream logCout;
-    std::streambuf* oldCout = std::cout.rdbuf(logCout.rdbuf());
 
     // Load shaders
     std::string vertPath(RES_DIRECTORY);
@@ -197,23 +212,27 @@ int main()
     // Set up audio
     std::string musicPath(RES_DIRECTORY);
     musicPath += "music/illegal_af.mp3";
-    AudioStream::getInstance().init(musicPath, 174.0, 8);
+    AudioStream::getInstance().init(musicPath, 175.0, 8);
     int32_t streamHandle = AudioStream::getInstance().getStreamHandle();
 
     // Set up rocket
     sync_device *rocket = sync_create_device("sync");
     if (!rocket) cout << "[rocket] failed to init" << endl;
 
-    // TODO: Defines for client-use?
+#ifdef TCPROCKET
     // Try connecting to rocket-server
     int rocketConnected = sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
     if (!rocketConnected)
         cout << "[rocket] failed to connect" << endl;
+#endif // TCPROCKET
 
     // Set up sync tracks
     const sync_track *pulse = sync_get_track(rocket, "pulse");
-    if (!rocketConnected && pulse->num_keys == 0)
+
+#if defined(GUI) && !defined(TCPROCKET)
+    if (pulse->num_keys == 0)
         cout << "[rocket] track \"pulse\" empty or not found" << endl;
+#endif // GUI && !TCPROCKET
 
     Timer rT;
     Timer gT;
@@ -225,15 +244,21 @@ int main()
 
         // Sync
         double syncRow = AudioStream::getInstance().getRow();
-        // TODO: Defines for client-use?
-        // Try connecting to rocket-server if update fails
+
+#ifdef TCPROCKET
+        // Try re-connecting to rocket-server if update fails
+        // Drops all the frames, if trying to connect on windows
         if (sync_update(rocket, (int)floor(syncRow), &audioSync, (void *)&streamHandle))
             sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT);
+#endif // TCPROCKET
 
+#ifdef GUI
         ImGui_ImplGlfwGL3_NewFrame();
+#endif // GUI
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+#ifdef GUI
         // Update imgui
         {
             ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
@@ -247,6 +272,7 @@ int main()
             logger.Draw();
             ImGui::End();
         }
+#endif // GUI
 
         // Try reloading the shader every 0.5s
         if (rT.getSeconds() > 0.5f) {
@@ -265,7 +291,10 @@ int main()
             q.render();
         }
 
+#ifdef GUI
         ImGui::Render();
+#endif // GUI
+
         glfwSwapBuffers(windowPtr);
     }
 
@@ -274,8 +303,12 @@ int main()
 
     // Release resources
     sync_destroy_device(rocket);
+
+#ifdef GUI
     std::cout.rdbuf(oldCout);
     ImGui_ImplGlfwGL3_Shutdown();
+#endif // GUI
+
     glfwDestroyWindow(windowPtr);
     glfwTerminate();
     glDeleteBuffers(1, &fbo);
