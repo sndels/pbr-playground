@@ -20,7 +20,7 @@ MERCURY's [HG_SDF](http://mercury.sexy/hg_sdf) is included for CSG.
 Building skunkwork requires OpenGL, [GLFW3](http://www.glfw.org) and
 [GLM](http://glm.g-truc.net/0.9.8/index.html) with CMake being able to find them.
 BASS is also required and it can be downloaded [here](https://www.un4seen.com/bass.html).
-Just drop the header and dylib/so/lib into `ext/bass/`.
+Just drop the header and dylib/so/lib+dll into `ext/bass/` and `ext/bass/lib/` respectively.
 [dear imgui](https://github.com/ocornut/imgui), [librocket](https://github.com/rocket/rocket)
 and [pre-generated gl3w](https://github.com/sndels/libgl3w) are provided as submodules.
 

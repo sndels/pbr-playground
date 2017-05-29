@@ -55,18 +55,25 @@ if (MSVC)
     target_link_libraries(skunkwork
         PRIVATE
         ${GLFW_LIBRARIES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/bass.lib
+        ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/lib/bass.lib
     )
 elseif (APPLE)
     target_link_libraries(skunkwork
         PRIVATE
         glfw
-        ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/libbass.dylib
+        ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/lib/libbass.dylib
     )
 else()
     target_link_libraries(skunkwork
         PRIVATE
         glfw
-        ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/libbass.so
+        ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/lib/libbass.so
     )
 endif()
+
+# Copy dynamic libraries to build folder after build
+# A cleaner way of doing this even with msvc's build structure?
+add_custom_command(TARGET skunkwork POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
+                           ${CMAKE_SOURCE_DIR}/ext/bass/lib
+                           $<TARGET_FILE_DIR:skunkwork>)
