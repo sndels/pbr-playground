@@ -22,6 +22,8 @@
 #include "texture.hpp"
 #include "timer.hpp"
 
+// Comment out to disable autoplay without tcp-Rocket
+//#define MUSIC_AUTOPLAY
 // Comment out to load sync from files
 #define TCPROCKET
 // Comment out to remove gui
@@ -234,7 +236,10 @@ int main()
     Timer rT;
     Timer gT;
 
+#ifdef MUSIC_AUTOPLAY
     AudioStream::getInstance().play();
+#endif // MUSIC_AUTOPLAY
+
     // Run the main loop
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
