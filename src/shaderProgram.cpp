@@ -53,7 +53,7 @@ bool ShaderProgram::bind() const
     return true;
 }
 
-void ShaderProgram::reload()
+bool ShaderProgram::reload()
 {
     // Reload shaders if some was modified
     for (auto j = 0u; j < 3; ++j) {
@@ -65,15 +65,17 @@ void ShaderProgram::reload()
                 if (progID != 0) {
                     glDeleteProgram(_progID);
                     _progID = progID;
+                    return false;
                 }
-                return;
+                return true;
             }
         }
     }
+    return false;
 }
 
-GLint ShaderProgram::getULoc(const char* uniformName, bool debug) const {
-    GLint uniformLocation = glGetUniformLocation(_progID, uniformName);
+GLint ShaderProgram::getULoc(const std::string& uniformName, bool debug) const {
+    GLint uniformLocation = glGetUniformLocation(_progID, uniformName.c_str());
     if (debug && uniformLocation == -1) {
         cout << "[shader] " <<  uniformName << " is not a valid shader variable" << endl;
     }

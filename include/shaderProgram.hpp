@@ -14,8 +14,8 @@ public:
 
     bool isLinked() const;
     bool bind() const;
-    void reload();
-    GLint getULoc(const char* uniformName, bool debug = false) const;
+    bool reload();
+    GLint getULoc(const std::string& uniformName, bool debug = false) const;
 
 private:
     GLuint loadProgram(const std::string vertPath, const std::string fragPath,
