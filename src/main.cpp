@@ -18,6 +18,7 @@
 #include "frameBuffer.hpp"
 #include "logger.hpp"
 #include "quad.hpp"
+#include "scene.hpp"
 #include "shaderProgram.hpp"
 #include "texture.hpp"
 #include "timer.hpp"
@@ -173,13 +174,9 @@ int main()
     glfwSetCursorPosCallback(windowPtr, cursorCallback);
     glfwSetMouseButtonCallback(windowPtr, mouseButtonCallback);
 
-    // Load shaders
+    // Load non-scene shaders
     std::string vertPath(RES_DIRECTORY);
     vertPath += "shader/basic_vert.glsl";
-    std::string rmFragPath(RES_DIRECTORY);
-    rmFragPath += "shader/basic_frag.glsl";
-    ShaderProgram rmShader(vertPath, rmFragPath);
-
     std::string fbmFragPath(RES_DIRECTORY);
     fbmFragPath += "shader/fbm_frag.glsl";
     ShaderProgram fbmShader(vertPath, fbmFragPath);
@@ -218,20 +215,18 @@ int main()
     sync_device *rocket = sync_create_device("sync");
     if (!rocket) cout << "[rocket] failed to init" << endl;
 
+    // Set up scenes
+    std::string rmFragPath(RES_DIRECTORY);
+    rmFragPath += "shader/basic_frag.glsl";
+    Scene scene(std::vector<std::string>({vertPath, rmFragPath}),
+                std::vector<std::string>({"uPulse"}), rocket);
+
 #ifdef TCPROCKET
     // Try connecting to rocket-server
     int rocketConnected = sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
     if (!rocketConnected)
         cout << "[rocket] failed to connect" << endl;
 #endif // TCPROCKET
-
-    // Set up sync tracks
-    const sync_track *pulse = sync_get_track(rocket, "pulse");
-
-#if defined(GUI) && !defined(TCPROCKET)
-    if (pulse->num_keys == 0)
-        cout << "[rocket] track \"pulse\" empty or not found" << endl;
-#endif // GUI && !TCPROCKET
 
     Timer rT;
     Timer gT;
@@ -278,19 +273,18 @@ int main()
 
         // Try reloading the shader every 0.5s
         if (rT.getSeconds() > 0.5f) {
-            rmShader.reload();
+            scene.reload();
             rT.reset();
         }
 
-        if (rmShader.isLinked()) {
-            rmShader.bind();
-            glUniform1f(rmShader.getULoc("uGT"), gT.getSeconds());
+        if (scene.shaderLinked()) {
+            scene.bind(syncRow);
+            glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
             glm::vec2 res(XRES,YRES);
-            glUniform2fv(rmShader.getULoc("uRes"), 1, glm::value_ptr(res));
-            glUniform2fv(rmShader.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
-            glUniform1f(rmShader.getULoc("uPulse"), (float)sync_get_val(pulse, syncRow));
+            glUniform2fv(scene.getULoc("uRes"), 1, glm::value_ptr(res));
+            glUniform2fv(scene.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
             fbmBuf.bindRead(std::vector<GLenum>({GL_TEXTURE0}),
-                            std::vector<GLint>({rmShader.getULoc("uFbmSampler")}));
+                            std::vector<GLint>({scene.getULoc("uFbmSampler")}));
             q.render();
         }
 
