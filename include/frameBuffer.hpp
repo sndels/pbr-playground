@@ -14,13 +14,16 @@ public:
     ~FrameBuffer();
 
     void bindWrite();
-    void bindRead(const std::vector<GLenum>& texUnits, const std::vector<GLint>& uniforms);
+    void bindRead(uint32_t texNum, GLenum texUnit, GLint uniforms);
     void genMipmap(uint32_t texNum);
+    void resize(uint32_t w, uint32_t h);
 
 private:
-    GLuint               _fbo;
-    std::vector<GLuint>  _texIDs;
-    GLuint               _depthRbo;
+    GLuint                      _fbo;
+    std::vector<GLuint>         _texIDs;
+    std::vector<TextureParams>  _texParams;
+    GLuint                      _depthRbo;
+    GLenum                      _depthFormat;
 
 };
 

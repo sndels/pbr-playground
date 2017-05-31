@@ -6,7 +6,8 @@ using std::cout;
 using std::endl;
 
 FrameBuffer::FrameBuffer(uint32_t w, uint32_t h, const std::vector<TextureParams>& texParams,
-                         GLenum depthFormat, GLenum depthAttachment)
+                         GLenum depthFormat, GLenum depthAttachment) :
+    _depthRbo(0)
 {
     // Generate and bind frame buffer object
     glGenFramebuffers(1, &_fbo);
@@ -15,6 +16,7 @@ FrameBuffer::FrameBuffer(uint32_t w, uint32_t h, const std::vector<TextureParams
     _texIDs.resize(texParams.size());
     glGenTextures(texParams.size(), _texIDs.data());
     for (auto i = 0u; i < texParams.size(); ++i) {
+        _texParams.emplace_back(texParams[i]);
         // Generate texture
         glBindTexture(GL_TEXTURE_2D, _texIDs[i]);
         glTexImage2D(GL_TEXTURE_2D, 0, texParams[i].internalFormat, w, h, 0,
@@ -30,6 +32,7 @@ FrameBuffer::FrameBuffer(uint32_t w, uint32_t h, const std::vector<TextureParams
     }
 
     if (depthFormat != 0 || depthAttachment != 0) {
+        _depthFormat = depthFormat;
         // Generate and bind depth buffer
         glGenRenderbuffers(1, &_depthRbo);
         glBindRenderbuffer(GL_RENDERBUFFER, _depthRbo);
@@ -59,12 +62,12 @@ void FrameBuffer::bindWrite()
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);
 }
 
-void FrameBuffer::bindRead(const std::vector<GLenum>& texUnits, const std::vector<GLint>& uniforms)
+void FrameBuffer::bindRead(uint32_t texNum, GLenum texUnit, GLint uniform)
 {
-    for (auto i = 0u; i < _texIDs.size(); ++i) {
-        glActiveTexture(texUnits[i]);
-        glBindTexture(GL_TEXTURE_2D, _texIDs[i]);
-        glUniform1i(uniforms[i], texUnits[i] - GL_TEXTURE0);
+    if (texNum < _texIDs.size()) {
+        glActiveTexture(texUnit);
+        glBindTexture(GL_TEXTURE_2D, _texIDs[texNum]);
+        glUniform1i(uniform, texUnit - GL_TEXTURE0);
     }
 }
 
@@ -72,4 +75,18 @@ void FrameBuffer::genMipmap(uint32_t texNum)
 {
     glBindTexture(GL_TEXTURE_2D, _texIDs.at(texNum));
     glGenerateMipmap(GL_TEXTURE_2D);
+}
+
+void FrameBuffer::resize(uint32_t w, uint32_t h)
+{
+    for (auto i = 0u; i < _texIDs.size(); ++i) {
+        glBindTexture(GL_TEXTURE_2D, _texIDs[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, _texParams[i].internalFormat, w, h, 0,
+                    _texParams[i].inputFormat, _texParams[i].type, 0);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+    if (_depthRbo != 0) {
+        glBindRenderbuffer(GL_RENDERBUFFER, _depthRbo);
+        glRenderbufferStorage(GL_RENDERBUFFER, _depthFormat, w, h);
+    }
 }
