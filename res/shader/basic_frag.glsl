@@ -1,8 +1,9 @@
 #version 410
 
-// These two should be included first
+// These are possibly used by other includes
 #include "uniforms.glsl"
 #include "definitions.glsl"
+#include "math.glsl"
 
 // Lights (shading.glsl uses NUM_LIGHTS)
 const int NUM_LIGHTS = 1;
@@ -40,6 +41,13 @@ mat3 camOrient(vec3 eye, vec3 target, vec3 up)
     vec3 u = normalize(cross(up, n));
     vec3 v = cross(n, u);
     return mat3(u, v, n);
+}
+
+vec3 mouseLook(vec3 viewDir)
+{
+    float rotX = uMPos.x * PI ;
+    float rotY = -uMPos.y * PI * 0.5; // TODO: Why is rotation around x the wrong way?
+    return rotateY(rotateX(viewDir, rotY), rotX);
 }
 
 vec3 getViewRay(vec2 fragCoord, vec2 resolution, float fov)
@@ -83,9 +91,10 @@ float castRay(vec3 rd, vec3 ro)
 
 void main()
 {
-    // Calculate view ray direction in scene space
+    // Calculate view ray direction in scene space, include mouselook
     vec3 rd = getViewRay(gl_FragCoord.xy, uRes, CAM_FOV);
     rd = camOrient(CAM_POS, CAM_TARGET, CAM_UP) * rd;
+    rd = mouseLook(rd);
 
     // Cast a ray into scene
     float depth = castRay(rd, CAM_POS);
