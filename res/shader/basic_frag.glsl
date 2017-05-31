@@ -2,7 +2,7 @@
 
 // These are possibly used by other includes
 #include "uniforms.glsl"
-#include "definitions.glsl"
+#include "material.glsl"
 #include "math.glsl"
 
 // Lights (shading.glsl uses NUM_LIGHTS)
@@ -12,7 +12,6 @@ vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(200));
 
 #include "hg_sdf.glsl"
 #include "shading.glsl"
-#include "materials.glsl"
 #include "noise.glsl"
 
 out vec4 fragColor;

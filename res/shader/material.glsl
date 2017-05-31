@@ -1,3 +1,9 @@
+struct Material {
+    vec3 albedo;
+    float roughness;
+    float metalness;
+};
+
 Material brushedAlu = Material(vec3(0.913, 0.921, 0.925), 0.65, 1);
 Material steel =      Material(vec3(0.24), 0.55, 1);
 Material rust =       Material(vec3(0.23, 0.07, 0.01), 0.8, 0.8);
