@@ -58,8 +58,5 @@ vec3 evalLighting(vec3 v, vec3 n, vec3 lVecs[NUM_LIGHTS], vec3 lInt[NUM_LIGHTS],
                    cookTorranceBRDF(NoL, NoV, NoH, VoH, F, mat.roughness)) *
                   lInt[i] * NoL;
     }
-
-    // Tone mapping (Uncharted 2)
-    sumCol = max(vec3(0), sumCol - 0.004);
-    return (sumCol * (6.2 * sumCol + 0.5)) / (sumCol * (6.2 * sumCol + 1.7) + 0.06);
+    return sumCol;
 }

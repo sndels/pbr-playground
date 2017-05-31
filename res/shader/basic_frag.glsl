@@ -7,14 +7,12 @@
 
 // Lights (shading.glsl uses NUM_LIGHTS)
 const int NUM_LIGHTS = 1;
-vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(5, 5, -8));
-vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(200));
+vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(1, 1, -2));
+vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(20));
 
 #include "hg_sdf.glsl"
 #include "shading.glsl"
 #include "noise.glsl"
-
-out vec4 fragColor;
 
 // Ray marching
 const int   MAX_MARCHING_STEPS = 256;
@@ -33,6 +31,10 @@ float ACTIVE_MATERIAL = 0;
 
 // Textures
 uniform sampler2D uFbmSampler;
+
+// Output
+layout (location = 0) out vec3 hdrBuffer;
+layout (location = 1) out vec3 posBuffer;
 
 mat3 camOrient(vec3 eye, vec3 target, vec3 up)
 {
@@ -100,12 +102,14 @@ void main()
 
     // Check if it missed
     if (depth > MAX_DIST - EPSILON) {
-        fragColor = vec4(0);
+        hdrBuffer = vec3(0);
+        posBuffer = vec3(0);
         return;
     }
 
     // Calculate ray to hit
-    vec3 p = CAM_POS + depth * rd;
+    vec3 vr = depth * rd;
+    vec3 p = CAM_POS + vr;
 
     // Retrieve material for hit
     Material mat;
@@ -129,5 +133,6 @@ void main()
     }
 
     // Evaluate final shading
-    fragColor = vec4(evalLighting(-rd, getN(p), lVecs, lInts, mat), 1);
+    hdrBuffer = evalLighting(-rd, getN(p), lVecs, lInts, mat);
+    posBuffer = vr;
 }

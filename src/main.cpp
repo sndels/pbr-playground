@@ -42,6 +42,7 @@ namespace {
     float LOGH = 200.f;
     float LOGM = 10.f;
     glm::vec2 CURSOR_POS(0,0);
+    bool RESIZED = false;
 }
 
 //Set up audio callbacks for rocket
@@ -91,6 +92,7 @@ void windowSizeCallback(GLFWwindow* window, int width, int height)
     XRES = width;
     YRES = height;
     glViewport(0, 0, XRES, YRES);
+    RESIZED = true;
 }
 
 static void errorCallback(int error, const char* description)
@@ -174,7 +176,7 @@ int main()
     glfwSetCursorPosCallback(windowPtr, cursorCallback);
     glfwSetMouseButtonCallback(windowPtr, mouseButtonCallback);
 
-    // Load non-scene shaders
+    // Load fbm shader
     std::string vertPath(RES_DIRECTORY);
     vertPath += "shader/basic_vert.glsl";
     std::string fbmFragPath(RES_DIRECTORY);
@@ -189,17 +191,17 @@ int main()
     std::vector<TextureParams> fbmTexParams({{GL_R32F, GL_RED, GL_FLOAT,
                                               GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
                                               GL_REPEAT, GL_REPEAT}});
-    FrameBuffer fbmBuf(noiseW, noiseH, fbmTexParams);
+    FrameBuffer fbmFbo(noiseW, noiseH, fbmTexParams);
 
     // Generate noise to texture on gpu
     glViewport(0, 0, noiseW, noiseH);
     fbmShader.bind();
-    fbmBuf.bindWrite();
+    fbmFbo.bindWrite();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glm::vec2 res(noiseW, noiseH);
     glUniform2fv(fbmShader.getULoc("uRes"), 1, glm::value_ptr(res));
     q.render();
-    fbmBuf.genMipmap(0);
+    fbmFbo.genMipmap(0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     // Set actual viewport size
@@ -221,6 +223,20 @@ int main()
     Scene scene(std::vector<std::string>({vertPath, rmFragPath}),
                 std::vector<std::string>({"uPulse"}), rocket);
 
+    // Generate framebuffer for main rendering
+    TextureParams rgb16fParams = {GL_RGB16F, GL_RGB, GL_FLOAT,
+                                  GL_LINEAR, GL_LINEAR,
+                                  GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
+    std::vector<TextureParams> mainTexParams({rgb16fParams, rgb16fParams});
+    FrameBuffer mainFbo(XRES, YRES, mainTexParams);
+
+    // Set up post-processing
+    std::string tonemapFragPath(RES_DIRECTORY);
+    tonemapFragPath += "shader/tonemap_frag.glsl";
+    ShaderProgram tonemapShader(vertPath, tonemapFragPath);
+
+    const sync_track* uExposure = sync_get_track(rocket, "uExposure");
+
 #ifdef TCPROCKET
     // Try connecting to rocket-server
     int rocketConnected = sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
@@ -239,6 +255,12 @@ int main()
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
 
+        // Resize buffers if windowsize changed
+        if (RESIZED) {
+            mainFbo.resize(XRES, YRES);
+            RESIZED = false;
+        }
+
         // Sync
         double syncRow = AudioStream::getInstance().getRow();
 
@@ -253,6 +275,7 @@ int main()
         ImGui_ImplGlfwGL3_NewFrame();
 #endif // GUI
 
+        // Clear default render target
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 #ifdef GUI
@@ -274,19 +297,35 @@ int main()
         // Try reloading the shader every 0.5s
         if (rT.getSeconds() > 0.5f) {
             scene.reload();
+            tonemapShader.reload();
             rT.reset();
         }
 
-        if (scene.shaderLinked()) {
-            scene.bind(syncRow);
-            glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
-            glm::vec2 res(XRES,YRES);
-            glUniform2fv(scene.getULoc("uRes"), 1, glm::value_ptr(res));
-            glUniform2fv(scene.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
-            fbmBuf.bindRead(std::vector<GLenum>({GL_TEXTURE0}),
-                            std::vector<GLint>({scene.getULoc("uFbmSampler")}));
-            q.render();
-        }
+        // Set res-vec for use in shaders
+        glm::vec2 res(XRES,YRES);
+
+        // Bind scene and main buffers
+        scene.bind(syncRow);
+        mainFbo.bindWrite();
+        // Clear main buffers
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // Bind global uniforms
+        glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
+        glUniform2fv(scene.getULoc("uRes"), 1, glm::value_ptr(res));
+        glUniform2fv(scene.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
+        fbmFbo.bindRead(0, GL_TEXTURE0, scene.getULoc("uFbmSampler"));
+        // Render scene to main buffers
+        q.render();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+        // Bind tonemap/gamma -shader and render final frame
+        tonemapShader.bind();
+        glUniform2fv(tonemapShader.getULoc("uRes"), 1, glm::value_ptr(res));
+        glUniform1f(tonemapShader.getULoc("uExposure"), (float)sync_get_val(uExposure, syncRow));
+        mainFbo.bindRead(0, GL_TEXTURE0, tonemapShader.getULoc("uHdrSampler"));
+        mainFbo.bindRead(1, GL_TEXTURE1, tonemapShader.getULoc("uPosBuffer"));
+        q.render();
+
 
 #ifdef GUI
         ImGui::Render();
