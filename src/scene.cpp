@@ -31,8 +31,3 @@ void Scene::reload()
             _uLocations.emplace_back(_shaderProg.getULoc(u));
    }
 }
-
-bool Scene::shaderLinked()
-{
-    return _shaderProg.isLinked();
-}

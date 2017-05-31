@@ -35,22 +35,9 @@ ShaderProgram::~ShaderProgram()
     glDeleteProgram(_progID);
 }
 
-bool ShaderProgram::isLinked() const
-{
-    return _progID != 0;
-}
-
-bool ShaderProgram::bind() const
+void ShaderProgram::bind() const
 {
     glUseProgram(_progID);
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR) {
-        cout << "[shader] Error binding shader program" << endl;
-        cout << "Error code: " << error << endl;
-        printProgramLog(_progID);
-        return false;
-    }
-    return true;
 }
 
 bool ShaderProgram::reload()

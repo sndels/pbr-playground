@@ -12,8 +12,7 @@ public:
                   const std::string& geomPath = std::string());
     ~ShaderProgram();
 
-    bool isLinked() const;
-    bool bind() const;
+    void bind() const;
     bool reload();
     GLint getULoc(const std::string& uniformName, bool debug = false) const;
 

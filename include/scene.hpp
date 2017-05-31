@@ -16,7 +16,6 @@ public:
 
     void bind(double syncRow);
     void reload();
-    bool shaderLinked();
     GLint getULoc(const std::string& uniform);
 
 private:
