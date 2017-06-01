@@ -60,10 +60,13 @@ vec3 getViewRay(vec2 fragCoord, vec2 resolution, float fov)
 
 float fScene(vec3 p)
 {
-    float sphereDist = fSphere(p - vec3(0), 0.75 + uPulse);
+    float sphere1Dist = fSphere(p - vec3(1, 0, 0), 0.75 + uPulse);
+    float sphere2Dist = fSphere(p - vec3(-1, 0, 0), 0.75 + uPulse);
     float planeDist = fPlane(p, vec3(0, 1, 0), 2);
-    ACTIVE_MATERIAL = sphereDist < planeDist ? 0 : 1;
-    return min(sphereDist, planeDist);
+    ACTIVE_MATERIAL = mix(0, 1, clamp((sphere1Dist - sphere2Dist) * 1000, 0, 1));
+    float minSphere = min(sphere1Dist, sphere2Dist);
+    ACTIVE_MATERIAL = mix(ACTIVE_MATERIAL, 2, clamp((minSphere - planeDist) * 1000, 0, 1));
+    return min(minSphere, planeDist);
 }
 
 // Don't call this before retrieving material from hit
@@ -114,10 +117,11 @@ void main()
     // Retrieve material for hit
     Material mat;
     if (ACTIVE_MATERIAL < 1) {
-        mat = mixMaterials(steel, rust, clamp(pow(4 * fbm(p + 0.4), 8), 0, 1));
-        if (mat.metalness < 0.9) {
-            mat.metalness += 0.5 * fbm(p * 8);
-        }
+        mat = mixMaterials(steel, rust, clamp(pow(4 * fbm(p + 3.6), 8), 0, 1));
+        if (mat.metalness < 0.9) mat.metalness += 0.5 * fbm(p * 8);
+    } else if (ACTIVE_MATERIAL < 2) {
+        mat = mixMaterials(steel, redPlasma, clamp(pow(4 * fbm(p + 3.3), 8), 0, 1));
+        if (length(mat.emissivity) > 0) mat.emissivity *= 0.5 * sin(uGT * 2) + 1.2;
     } else {
         mat = sand;
         mat.metalness = 0.5 * clamp(fbm(p * 0.15 - vec3(0, sin(uGT * 0.2), uGT * 0.2)), 0, 1);
@@ -133,6 +137,6 @@ void main()
     }
 
     // Evaluate final shading
-    hdrBuffer = evalLighting(-rd, getN(p), lVecs, lInts, mat);
+    hdrBuffer = evalLighting(-rd, getN(p), lVecs, lInts, mat) + mat.emissivity;
     posBuffer = vr;
 }
