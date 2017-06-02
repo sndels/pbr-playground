@@ -227,15 +227,28 @@ int main()
     TextureParams rgb16fParams = {GL_RGB16F, GL_RGB, GL_FLOAT,
                                   GL_LINEAR, GL_LINEAR,
                                   GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
-    std::vector<TextureParams> mainTexParams({rgb16fParams, rgb16fParams});
+    TextureParams rgb16fMipParams = {GL_RGB16F, GL_RGB, GL_FLOAT,
+                                     GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
+                                     GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
+    std::vector<TextureParams> mainTexParams({rgb16fParams, rgb16fParams, rgb16fMipParams});
     FrameBuffer mainFbo(XRES, YRES, mainTexParams);
 
+    // Generate additional buffers
+    FrameBuffer pingFbo(XRES, YRES, std::vector<TextureParams>({rgb16fParams}));
+    FrameBuffer pongFbo(XRES, YRES, std::vector<TextureParams>({rgb16fParams}));
+
     // Set up post-processing
+    std::string bloomFragPath(RES_DIRECTORY);
+    bloomFragPath += "shader/bloom_frag.glsl";
+    ShaderProgram bloomShader(vertPath, bloomFragPath);
+
     std::string tonemapFragPath(RES_DIRECTORY);
     tonemapFragPath += "shader/tonemap_frag.glsl";
     ShaderProgram tonemapShader(vertPath, tonemapFragPath);
 
     const sync_track* uExposure = sync_get_track(rocket, "uExposure");
+    const sync_track* uBloom = sync_get_track(rocket, "uBloom");
+    const sync_track* uBloomThreshold = sync_get_track(rocket, "uBloomThreshold");
 
 #ifdef TCPROCKET
     // Try connecting to rocket-server
@@ -258,6 +271,8 @@ int main()
         // Resize buffers if windowsize changed
         if (RESIZED) {
             mainFbo.resize(XRES, YRES);
+            pingFbo.resize(XRES, YRES);
+            pongFbo.resize(XRES, YRES);
             RESIZED = false;
         }
 
@@ -274,9 +289,6 @@ int main()
 #ifdef GUI
         ImGui_ImplGlfwGL3_NewFrame();
 #endif // GUI
-
-        // Clear default render target
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 #ifdef GUI
         // Update imgui
@@ -297,6 +309,7 @@ int main()
         // Try reloading the shader every 0.5s
         if (rT.getSeconds() > 0.5f) {
             scene.reload();
+            bloomShader.reload();
             tonemapShader.reload();
             rT.reset();
         }
@@ -305,25 +318,43 @@ int main()
         glm::vec2 res(XRES,YRES);
 
         // Bind scene and main buffers
+        glViewport(0, 0, XRES, YRES);
         scene.bind(syncRow);
         mainFbo.bindWrite();
-        // Clear main buffers
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // Bind global uniforms
         glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
         glUniform2fv(scene.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform2fv(scene.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
+        glUniform1f(scene.getULoc("uBloomThreshold"), (float)sync_get_val(uBloomThreshold, syncRow));
         fbmFbo.bindRead(0, GL_TEXTURE0, scene.getULoc("uFbmSampler"));
         // Render scene to main buffers
+        q.render();
+        mainFbo.genMipmap(2);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+        // Calculate bloom
+        bloomShader.bind();
+        pingFbo.bindWrite();
+        glUniform2fv(bloomShader.getULoc("uRes"), 1, glm::value_ptr(res));
+        glUniform1f(bloomShader.getULoc("uLOD"), 0.f);
+        glUniform1i(bloomShader.getULoc("uHorizontal"), 1);
+        mainFbo.bindRead(2, GL_TEXTURE0, bloomShader.getULoc("uBloomSampler"));
+        q.render();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        pongFbo.bindWrite();
+        pingFbo.bindRead(0, GL_TEXTURE0, bloomShader.getULoc("uBloomSampler"));
+        glUniform1i(bloomShader.getULoc("uHorizontal"), 0);
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
         // Bind tonemap/gamma -shader and render final frame
+        glViewport(0, 0, XRES, YRES);
         tonemapShader.bind();
         glUniform2fv(tonemapShader.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform1f(tonemapShader.getULoc("uExposure"), (float)sync_get_val(uExposure, syncRow));
-        mainFbo.bindRead(0, GL_TEXTURE0, tonemapShader.getULoc("uHdrSampler"));
-        mainFbo.bindRead(1, GL_TEXTURE1, tonemapShader.getULoc("uPosBuffer"));
+        glUniform1f(tonemapShader.getULoc("uBloom"), (float)sync_get_val(uBloom, syncRow));
+        mainFbo.bindRead(1, GL_TEXTURE0, tonemapShader.getULoc("uHdrSampler"));
+        pongFbo.bindRead(0, GL_TEXTURE1, tonemapShader.getULoc("uBloomSampler"));
         q.render();
 
 

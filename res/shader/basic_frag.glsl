@@ -29,12 +29,16 @@ float CAM_FOV = 65;
 // Material
 float ACTIVE_MATERIAL = 0;
 
+// Uniforms
+uniform float uBloomThreshold;
+
 // Textures
 uniform sampler2D uFbmSampler;
 
 // Output
-layout (location = 0) out vec3 hdrBuffer;
-layout (location = 1) out vec3 posBuffer;
+layout (location = 0) out vec3 posBuffer;
+layout (location = 1) out vec3 hdrBuffer;
+layout (location = 2) out vec3 bloomBuffer;
 
 mat3 camOrient(vec3 eye, vec3 target, vec3 up)
 {
@@ -105,8 +109,9 @@ void main()
 
     // Check if it missed
     if (depth > MAX_DIST - EPSILON) {
-        hdrBuffer = vec3(0);
         posBuffer = vec3(0);
+        hdrBuffer = vec3(0);
+        bloomBuffer = vec3(0);
         return;
     }
 
@@ -137,6 +142,12 @@ void main()
     }
 
     // Evaluate final shading
-    hdrBuffer = evalLighting(-rd, getN(p), lVecs, lInts, mat) + mat.emissivity;
     posBuffer = vr;
+    vec3 color = evalLighting(-rd, getN(p), lVecs, lInts, mat) + mat.emissivity;
+    hdrBuffer = color;
+    // Write value to bloom-buffer if bright enough
+    float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    if (any(greaterThan(color, vec3(uBloomThreshold))))
+        bloomBuffer = max(vec3(0), color - vec3(uBloomThreshold));
+    else bloomBuffer = vec3(0);
 }
