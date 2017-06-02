@@ -13,6 +13,7 @@ FrameBuffer::FrameBuffer(uint32_t w, uint32_t h, const std::vector<TextureParams
     glGenFramebuffers(1, &_fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);
 
+    std::vector<GLenum> drawBuffers;
     _texIDs.resize(texParams.size());
     glGenTextures(texParams.size(), _texIDs.data());
     for (auto i = 0u; i < texParams.size(); ++i) {
@@ -29,7 +30,9 @@ FrameBuffer::FrameBuffer(uint32_t w, uint32_t h, const std::vector<TextureParams
 
         // Bind to fbo
         glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, _texIDs[i], 0);
+        drawBuffers.emplace_back(GL_COLOR_ATTACHMENT0 + i);
     }
+    glDrawBuffers(drawBuffers.size(), drawBuffers.data());
 
     if (depthFormat != 0 || depthAttachment != 0) {
         _depthFormat = depthFormat;
@@ -43,10 +46,10 @@ FrameBuffer::FrameBuffer(uint32_t w, uint32_t h, const std::vector<TextureParams
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR) {
-        cout << "[framebuffer] Error creating framebuffer" << endl;
-        cout << "Error code: " << error << endl;
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        cout << "[framebuffer] init failed" << endl;
+        cout << "Status: " << status << endl;
     }
 }
 
