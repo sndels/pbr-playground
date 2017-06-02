@@ -17,6 +17,7 @@
 #include "audioStream.hpp"
 #include "frameBuffer.hpp"
 #include "logger.hpp"
+#include "gpuProfiler.hpp"
 #include "quad.hpp"
 #include "scene.hpp"
 #include "shaderProgram.hpp"
@@ -265,6 +266,9 @@ int main()
 
     Timer rT;
     Timer gT;
+    GpuProfiler sceneProf(5);
+    GpuProfiler bloomProf(5);
+    GpuProfiler toneProf(5);
 
 #ifdef MUSIC_AUTOPLAY
     AudioStream::getInstance().play();
@@ -306,7 +310,9 @@ int main()
             ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
             ImGui::SetNextWindowPos(ImVec2(LOGM, YRES - LOGH - LOGM), ImGuiSetCond_Always);
             ImGui::Begin("Log", &showLog, logWindowFlags);
-            ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+            ImGui::Text("FPS: %.1f Scene: %.1f Bloom: %.1f Tone: %.1f",
+                        ImGui::GetIO().Framerate, sceneProf.getAvg(),
+                        bloomProf.getAvg(), toneProf.getAvg());
             if (logCout.str().length() != 0) {
                 logger.AddLog("%s", logCout.str().c_str());
                 logCout.str("");
@@ -327,6 +333,7 @@ int main()
         // Set res-vec for use in shaders
         glm::vec2 res(XRES,YRES);
 
+        sceneProf.startSample();
         // Bind scene and main buffers
         glViewport(0, 0, XRES, YRES);
         scene.bind(syncRow);
@@ -341,7 +348,9 @@ int main()
         q.render();
         mainFbo.genMipmap(2);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        sceneProf.endSample();
 
+        bloomProf.startSample();
         // Calculate bloom
         bloomShader.bind();
         // Small kernel
@@ -388,7 +397,9 @@ int main()
         glUniform1i(bloomShader.getULoc("uHorizontal"), 0);
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        bloomProf.endSample();
 
+        toneProf.startSample();
         // Bind tonemap/gamma -shader and render final frame
         glViewport(0, 0, XRES, YRES);
         tonemapShader.bind();
@@ -402,6 +413,7 @@ int main()
         pong2Fbo.bindRead(0, GL_TEXTURE2, tonemapShader.getULoc("uMBloomSampler"));
         pong4Fbo.bindRead(0, GL_TEXTURE3, tonemapShader.getULoc("uLBloomSampler"));
         q.render();
+        toneProf.endSample();
 
 
 #ifdef GUI
