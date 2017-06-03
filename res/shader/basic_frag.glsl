@@ -26,9 +26,6 @@ vec3  CAM_TARGET = vec3(0, 0, 0);
 vec3  CAM_UP = vec3(0, 1, 0);
 float CAM_FOV = 65;
 
-// Material
-float ACTIVE_MATERIAL = 0;
-
 // Uniforms
 uniform float uBloomThreshold;
 
@@ -62,39 +59,37 @@ vec3 getViewRay(vec2 fragCoord, vec2 resolution, float fov)
     return normalize(vec3(xy, z));
 }
 
-float fScene(vec3 p)
+SceneResult scene(vec3 p)
 {
-    float sphere1Dist = fSphere(p - vec3(1, 0, 0), 0.75 + uPulse);
-    float sphere2Dist = fSphere(p - vec3(-1, 0, 0), 0.75 + uPulse);
-    float planeDist = fPlane(p, vec3(0, 1, 0), 2);
-    ACTIVE_MATERIAL = mix(0, 1, clamp((sphere1Dist - sphere2Dist) * 1000, 0, 1));
-    float minSphere = min(sphere1Dist, sphere2Dist);
-    ACTIVE_MATERIAL = mix(ACTIVE_MATERIAL, 2, clamp((minSphere - planeDist) * 1000, 0, 1));
-    return min(minSphere, planeDist);
+    SceneResult sphere1 = SceneResult(fSphere(p - vec3(1, 0, 0), 0.75 + uPulse), 0);
+    SceneResult sphere2 = SceneResult(fSphere(p - vec3(-1, 0, 0), 0.75 + uPulse), 1);
+    SceneResult plane = SceneResult(fPlane(p, vec3(0, 1, 0), 2), 2);
+    return opU(opU(sphere1, sphere2), plane);
 }
 
-// Don't call this before retrieving material from hit
 vec3 getN(vec3 p)
 {
     vec3 e = vec3(EPSILON, 0, 0);
-    vec3 n = vec3(fScene(vec3(p + e.xyy)) - fScene(vec3(p - e.xyy)),
-                  fScene(vec3(p + e.yxy)) - fScene(vec3(p - e.yxy)),
-                  fScene(vec3(p + e.yyx)) - fScene(vec3(p - e.yyx)));
+    vec3 n = vec3(scene(vec3(p + e.xyy)).dist - scene(vec3(p - e.xyy)).dist,
+                  scene(vec3(p + e.yxy)).dist - scene(vec3(p - e.yxy)).dist,
+                  scene(vec3(p + e.yyx)).dist - scene(vec3(p - e.yyx)).dist);
     return normalize(n);
 }
 
-float castRay(vec3 rd, vec3 ro)
+SceneResult castRay(vec3 rd, vec3 ro)
 {
     float depth = MIN_DIST;
+    SceneResult result;
     for (int i = 0; i < MAX_MARCHING_STEPS; ++i) {
-        float dist = fScene(ro + depth * rd);
-        if (dist < depth * EPSILON) break;
+        result = scene(ro + depth * rd);
+        if (result.dist < depth * EPSILON) break;
 
-        depth += dist;
+        depth += result.dist;
 
         if (depth > MAX_DIST) break;
     }
-    return depth;
+    result.dist = depth;
+    return result;
 }
 
 void main()
@@ -105,10 +100,10 @@ void main()
     rd = mouseLook(rd);
 
     // Cast a ray into scene
-    float depth = castRay(rd, CAM_POS);
+    SceneResult result = castRay(rd, CAM_POS);
 
     // Check if it missed
-    if (depth > MAX_DIST - EPSILON) {
+    if (result.dist > MAX_DIST - EPSILON) {
         posBuffer = vec3(0);
         hdrBuffer = vec3(0);
         bloomBuffer = vec3(0);
@@ -116,15 +111,15 @@ void main()
     }
 
     // Calculate ray to hit
-    vec3 vr = depth * rd;
+    vec3 vr = result.dist * rd;
     vec3 p = CAM_POS + vr;
 
     // Retrieve material for hit
     Material mat;
-    if (ACTIVE_MATERIAL < 1) {
+    if (result.material < 1) {
         mat = mixMaterials(steel, rust, clamp(pow(4 * fbm(p + 3.6), 8), 0, 1));
         if (mat.metalness < 0.9) mat.metalness += 0.5 * fbm(p * 8);
-    } else if (ACTIVE_MATERIAL < 2) {
+    } else if (result.material < 2) {
         mat = mixMaterials(steel, redPlasma, clamp(pow(4 * fbm(p + 3.3), 8), 0, 1));
         if (length(mat.emissivity) > 0) mat.emissivity *= 0.5 * sin(uGT * 2) + 1.2;
     } else {
