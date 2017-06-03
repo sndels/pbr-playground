@@ -5,16 +5,21 @@ Current features:
   * Includes in glsl
   * Log window with correctly parsed shader errors even with includes
   * Auto-reloading shaders when sources are saved
-  * Texture-class with parameters exposed by constructor
+  * Gpu-"profiler"
+    * Holds a vector of last n deltas for averaging
+    * Timing instances can't be interleaved because GL_TIMESTAMP doesn't work on OSX
   * Music playback via singleton using BASS
-    * Interface for Rocket
+  * Rocket-interface
+  * Wrapper-classes for most of the common resources (Scene, FrameBuffer, Texture etc.)
 
 I have used [emoon's version](https://github.com/emoon/rocket) as my Rocket-server.
 
-## Basic shader
+## Shader
 
-Implements PBR-materials along the lines of UE4 and also has simplex noise + fbm.
-MERCURY's [HG_SDF](http://mercury.sexy/hg_sdf) is included for CSG.
+Implements PBR-shading along the lines of UE4 and also has simplex noise + fbm.
+MERCURY's [HG_SDF](http://mercury.sexy/hg_sdf) is included for CSG. Decent bloom
+and hdr/gamma -correction are present as post-stages. One bounce of reflections is
+also calculated to a buffer but not used in current rendering.
 
 ## Dependencies
 Building skunkwork requires OpenGL, [GLFW3](http://www.glfw.org) and
