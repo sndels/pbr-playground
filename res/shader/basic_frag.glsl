@@ -35,7 +35,8 @@ uniform sampler2D uFbmSampler;
 // Output
 layout (location = 0) out vec3 posBuffer;
 layout (location = 1) out vec3 hdrBuffer;
-layout (location = 2) out vec3 bloomBuffer;
+layout (location = 2) out vec4 hdrReflectionBuffer;
+layout (location = 3) out vec3 bloomBuffer;
 
 mat3 camOrient(vec3 eye, vec3 target, vec3 up)
 {
@@ -92,6 +93,22 @@ SceneResult castRay(vec3 rd, vec3 ro)
     return result;
 }
 
+Material evalMaterial(vec3 p, float matI)
+{
+    Material mat;
+    if (matI < 1) {
+        mat = mixMaterials(steel, rust, clamp(pow(4 * fbm(p + 3.6), 8), 0, 1));
+        if (mat.metalness < 0.9) mat.metalness += 0.5 * fbm(p * 8);
+    } else if (matI < 2) {
+        mat = mixMaterials(steel, redPlasma, clamp(pow(4 * fbm(p + 3.3), 8), 0, 1));
+        if (length(mat.emissivity) > 0) mat.emissivity *= 0.5 * sin(uGT * 2) + 1.2;
+    } else {
+        mat = sand;
+        mat.metalness = 0.5 * clamp(fbm(p * 0.15 - vec3(0, sin(uGT * 0.2), uGT * 0.2)), 0, 1);
+    }
+    return mat;
+}
+
 void main()
 {
     // Calculate view ray direction in scene space, include mouselook
@@ -106,6 +123,7 @@ void main()
     if (result.dist > MAX_DIST - EPSILON) {
         posBuffer = vec3(0);
         hdrBuffer = vec3(0);
+        hdrReflectionBuffer = vec4(0);
         bloomBuffer = vec3(0);
         return;
     }
@@ -115,17 +133,7 @@ void main()
     vec3 p = CAM_POS + vr;
 
     // Retrieve material for hit
-    Material mat;
-    if (result.material < 1) {
-        mat = mixMaterials(steel, rust, clamp(pow(4 * fbm(p + 3.6), 8), 0, 1));
-        if (mat.metalness < 0.9) mat.metalness += 0.5 * fbm(p * 8);
-    } else if (result.material < 2) {
-        mat = mixMaterials(steel, redPlasma, clamp(pow(4 * fbm(p + 3.3), 8), 0, 1));
-        if (length(mat.emissivity) > 0) mat.emissivity *= 0.5 * sin(uGT * 2) + 1.2;
-    } else {
-        mat = sand;
-        mat.metalness = 0.5 * clamp(fbm(p * 0.15 - vec3(0, sin(uGT * 0.2), uGT * 0.2)), 0, 1);
-    }
+    Material mat = evalMaterial(p, result.material);
 
     // Directions to lights from hit + intensities at hit
     vec3 lVecs[NUM_LIGHTS], lInts[NUM_LIGHTS];
@@ -136,13 +144,45 @@ void main()
         lInts[i] = LIGHT_INT[i] / (lightDist * lightDist);
     }
 
-    // Evaluate final shading
+    // Write primary ray hit to buffer
     posBuffer = vr;
-    vec3 color = evalLighting(-rd, getN(p), lVecs, lInts, mat) + mat.emissivity;
+    // Evaluate direct shading
+    vec3 n = getN(p);
+    vec3 color = evalLighting(-rd, n, lVecs, lInts, mat) + mat.emissivity;
     hdrBuffer = color;
     // Write value to bloom-buffer if bright enough
     float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
     if (any(greaterThan(color, vec3(uBloomThreshold))))
         bloomBuffer = max(vec3(0), color - vec3(uBloomThreshold));
     else bloomBuffer = vec3(0);
+
+    // Evaluate reflection
+    // Cast a ray into scene
+    rd = reflect(rd, n);
+    result = castRay(rd, p);
+
+    // Check if it missed
+    if (result.dist > MAX_DIST - EPSILON) {
+        hdrReflectionBuffer = vec4(0);
+        return;
+    }
+
+    // Calculate ray to hit
+    vr = result.dist * rd;
+    p = p + vr;
+
+    // Retrieve material for hit
+    mat = evalMaterial(p, result.material);
+
+    // Directions to lights from hit + intensities at hit
+    for (int i = 0; i < NUM_LIGHTS; ++i) {
+        vec3 toLight = LIGHT_POS[i] - p;
+        float lightDist = length(toLight);
+        lVecs[i] = toLight / lightDist;
+        lInts[i] = LIGHT_INT[i] / (lightDist * lightDist);
+    }
+
+    // Evaluate shading for reflection
+    vec3 reflectionColor = evalLighting(-rd, getN(p), lVecs, lInts, mat) + mat.emissivity;
+    hdrReflectionBuffer = vec4(reflectionColor, mat.roughness);
 }

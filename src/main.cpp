@@ -228,10 +228,13 @@ int main()
     TextureParams rgb16fParams = {GL_RGB16F, GL_RGB, GL_FLOAT,
                                   GL_LINEAR, GL_LINEAR,
                                   GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
+    TextureParams rgba16fParams = {GL_RGBA16F, GL_RGBA, GL_FLOAT,
+                                  GL_LINEAR, GL_LINEAR,
+                                  GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
     TextureParams rgb16fMipParams = {GL_RGB16F, GL_RGB, GL_FLOAT,
                                      GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
                                      GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
-    std::vector<TextureParams> mainTexParams({rgb16fParams, rgb16fParams, rgb16fMipParams});
+    std::vector<TextureParams> mainTexParams({rgb16fParams, rgb16fParams, rgba16fParams, rgb16fMipParams});
     FrameBuffer mainFbo(XRES, YRES, mainTexParams);
 
     // Generate additional buffers
@@ -346,7 +349,7 @@ int main()
         fbmFbo.bindRead(0, GL_TEXTURE0, scene.getULoc("uFbmSampler"));
         // Render scene to main buffers
         q.render();
-        mainFbo.genMipmap(2);
+        mainFbo.genMipmap(3);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         sceneProf.endSample();
 
@@ -359,7 +362,7 @@ int main()
         glUniform2fv(bloomShader.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform1f(bloomShader.getULoc("uLOD"), 0.f);
         glUniform1i(bloomShader.getULoc("uHorizontal"), 1);
-        mainFbo.bindRead(2, GL_TEXTURE0, bloomShader.getULoc("uBloomSampler"));
+        mainFbo.bindRead(3, GL_TEXTURE0, bloomShader.getULoc("uBloomSampler"));
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         pongFbo.bindWrite();
@@ -374,7 +377,7 @@ int main()
         glUniform2fv(bloomShader.getULoc("uRes"), 1, glm::value_ptr(res2));
         glUniform1f(bloomShader.getULoc("uLOD"), 1.f);
         glUniform1i(bloomShader.getULoc("uHorizontal"), 1);
-        mainFbo.bindRead(2, GL_TEXTURE0, bloomShader.getULoc("uBloomSampler"));
+        mainFbo.bindRead(3, GL_TEXTURE0, bloomShader.getULoc("uBloomSampler"));
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         pong2Fbo.bindWrite();
@@ -389,7 +392,7 @@ int main()
         glUniform2fv(bloomShader.getULoc("uRes"), 1, glm::value_ptr(res4));
         glUniform1f(bloomShader.getULoc("uLOD"), 2.f);
         glUniform1i(bloomShader.getULoc("uHorizontal"), 1);
-        mainFbo.bindRead(2, GL_TEXTURE0, bloomShader.getULoc("uBloomSampler"));
+        mainFbo.bindRead(3, GL_TEXTURE0, bloomShader.getULoc("uBloomSampler"));
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         pong4Fbo.bindWrite();
