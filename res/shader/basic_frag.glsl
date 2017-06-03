@@ -34,9 +34,10 @@ uniform sampler2D uFbmSampler;
 
 // Output
 layout (location = 0) out vec3 posBuffer;
-layout (location = 1) out vec3 hdrBuffer;
-layout (location = 2) out vec4 hdrReflectionBuffer;
-layout (location = 3) out vec3 bloomBuffer;
+layout (location = 1) out vec3 normalBuffer;
+layout (location = 2) out vec3 hdrBuffer;
+layout (location = 3) out vec4 hdrReflectionBuffer;
+layout (location = 4) out vec3 bloomBuffer;
 
 mat3 camOrient(vec3 eye, vec3 target, vec3 up)
 {
@@ -122,6 +123,7 @@ void main()
     // Check if it missed
     if (result.dist > MAX_DIST - EPSILON) {
         posBuffer = vec3(0);
+        normalBuffer = vec3(0);
         hdrBuffer = vec3(0);
         hdrReflectionBuffer = vec4(0);
         bloomBuffer = vec3(0);
@@ -148,6 +150,7 @@ void main()
     posBuffer = vr;
     // Evaluate direct shading
     vec3 n = getN(p);
+    normalBuffer = n;
     vec3 color = evalLighting(-rd, n, lVecs, lInts, mat) + mat.emissivity;
     hdrBuffer = color;
     // Write value to bloom-buffer if bright enough
