@@ -41,8 +41,7 @@ FrameBuffer::FrameBuffer(uint32_t w, uint32_t h, const std::vector<TextureParams
         glBindRenderbuffer(GL_RENDERBUFFER, _depthRbo);
         glRenderbufferStorage(GL_RENDERBUFFER, depthFormat, w, h);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, depthAttachment, GL_RENDERBUFFER, _depthRbo);
-    } else
-        cout << "[framebuffer] buffer generated without depth buffer" << endl;
+    }
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
