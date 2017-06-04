@@ -7,7 +7,7 @@ struct Material {
 
 struct SceneResult {
     float dist;
-    float material;
+    float materialIndex;
 };
 
 Material brushedAlu = Material(vec3(0.913, 0.921, 0.925), 0.65, 1, vec3(0));
@@ -34,5 +34,5 @@ SceneResult opI(SceneResult r1, SceneResult r2) {
 }
 
 SceneResult opS(SceneResult r1, SceneResult r2) {
-    return r2.dist > -r1.dist ? r2 : SceneResult(-r1.dist, r1.material);
+    return r2.dist > -r1.dist ? r2 : SceneResult(-r1.dist, r1.materialIndex);
 }

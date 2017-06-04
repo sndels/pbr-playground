@@ -160,7 +160,7 @@ void main()
     vec3 pos = CAM_POS + viewRay;
 
     // Evaluate hit
-    HitInfo mainHit = evalHit(pos, rayDir, result.material);
+    HitInfo mainHit = evalHit(pos, rayDir, result.materialIndex);
 
     // Write primary ray to buffers
     posBuffer = viewRay;
@@ -187,7 +187,7 @@ void main()
     pos = pos + reflRay;
 
     // Evaluate hit
-    HitInfo reflHit = evalHit(pos, reflDir, result.material);
+    HitInfo reflHit = evalHit(pos, reflDir, result.materialIndex);
 
     // Calculate intensity of reflection based on fresnel of primary surface
     vec3 f0 = mix(vec3(0.04), reflHit.material.albedo, reflHit.material.metalness);
