@@ -107,15 +107,43 @@ Material evalMaterial(vec3 p, float matI)
     return mat;
 }
 
+struct HitInfo {
+    vec3 color;
+    vec3 normal;
+    Material material;
+};
+
+HitInfo evalHit(vec3 p, vec3 rd, float matI)
+{
+    HitInfo info;
+    // Retrieve material for hit
+    info.material = evalMaterial(p, matI);
+
+    // Directions to lights from hit + intensities at hit
+    vec3 lVecs[NUM_LIGHTS], lInts[NUM_LIGHTS];
+    for (int i = 0; i < NUM_LIGHTS; ++i) {
+        vec3 toLight = LIGHT_POS[i] - p;
+        float lightDist = length(toLight);
+        lVecs[i] = toLight / lightDist;
+        lInts[i] = LIGHT_INT[i] / (lightDist * lightDist);
+    }
+
+    // Evaluate direct shading
+    info.normal = getN(p);
+    info.color = evalLighting(-rd, info.normal, lVecs, lInts, info.material) +
+                 info.material.emissivity;
+    return info;
+}
+
 void main()
 {
     // Calculate view ray direction in scene space, include mouselook
-    vec3 rd = getViewRay(gl_FragCoord.xy, uRes, CAM_FOV);
-    rd = camOrient(CAM_POS, CAM_TARGET, CAM_UP) * rd;
-    rd = mouseLook(rd);
+    vec3 rayDir = getViewRay(gl_FragCoord.xy, uRes, CAM_FOV);
+    rayDir = camOrient(CAM_POS, CAM_TARGET, CAM_UP) * rayDir;
+    rayDir = mouseLook(rayDir);
 
     // Cast a ray into scene
-    SceneResult result = castRay(rd, CAM_POS);
+    SceneResult result = castRay(rayDir, CAM_POS);
 
     // Check if it missed
     if (result.dist > MAX_DIST - EPSILON) {
@@ -128,38 +156,25 @@ void main()
     }
 
     // Calculate ray to hit
-    vec3 vr = result.dist * rd;
-    vec3 p = CAM_POS + vr;
+    vec3 viewRay = result.dist * rayDir;
+    vec3 pos = CAM_POS + viewRay;
 
-    // Retrieve material for hit
-    Material mat = evalMaterial(p, result.material);
+    // Evaluate hit
+    HitInfo mainHit = evalHit(pos, rayDir, result.material);
 
-    // Directions to lights from hit + intensities at hit
-    vec3 lVecs[NUM_LIGHTS], lInts[NUM_LIGHTS];
-    for (int i = 0; i < NUM_LIGHTS; ++i) {
-        vec3 toLight = LIGHT_POS[i] - p;
-        float lightDist = length(toLight);
-        lVecs[i] = toLight / lightDist;
-        lInts[i] = LIGHT_INT[i] / (lightDist * lightDist);
-    }
-
-    // Write primary ray hit to buffer
-    posBuffer = vr;
-    // Evaluate direct shading
-    vec3 n = getN(p);
-    normalBuffer = n;
-    vec3 color = evalLighting(-rd, n, lVecs, lInts, mat) + mat.emissivity;
-    hdrBuffer = color;
+    // Write primary ray to buffers
+    posBuffer = viewRay;
+    hdrBuffer = mainHit.color;
     // Write value to bloom-buffer if bright enough
-    float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
-    if (any(greaterThan(color, vec3(uBloomThreshold))))
-        bloomBuffer = max(vec3(0), color - vec3(uBloomThreshold));
+    float brightness = dot(mainHit.color, vec3(0.2126, 0.7152, 0.0722));
+    if (any(greaterThan(mainHit.color, vec3(uBloomThreshold))))
+        bloomBuffer = max(vec3(0), mainHit.color - vec3(uBloomThreshold));
     else bloomBuffer = vec3(0);
 
     // Evaluate reflection
     // Cast a ray into scene
-    rd = reflect(rd, n);
-    result = castRay(rd, p);
+    vec3 reflDir = reflect(rayDir, mainHit.normal);
+    result = castRay(reflDir, pos);
 
     // Check if it missed
     if (result.dist > MAX_DIST - EPSILON) {
@@ -168,21 +183,15 @@ void main()
     }
 
     // Calculate ray to hit
-    vr = result.dist * rd;
-    p = p + vr;
+    vec3 reflRay = result.dist * reflDir;
+    pos = pos + reflRay;
 
-    // Retrieve material for hit
-    mat = evalMaterial(p, result.material);
+    // Evaluate hit
+    HitInfo reflHit = evalHit(pos, reflDir, result.material);
 
-    // Directions to lights from hit + intensities at hit
-    for (int i = 0; i < NUM_LIGHTS; ++i) {
-        vec3 toLight = LIGHT_POS[i] - p;
-        float lightDist = length(toLight);
-        lVecs[i] = toLight / lightDist;
-        lInts[i] = LIGHT_INT[i] / (lightDist * lightDist);
-    }
-
-    // Evaluate shading for reflection
-    vec3 reflectionColor = evalLighting(-rd, getN(p), lVecs, lInts, mat) + mat.emissivity;
-    hdrReflectionBuffer = vec4(reflectionColor, mat.roughness);
+    // Calculate intensity of reflection based on fresnel of primary surface
+    vec3 f0 = mix(vec3(0.04), reflHit.material.albedo, reflHit.material.metalness);
+    float VoH = max(dot(-rayDir, normalize(-rayDir + reflDir)), 0);
+    vec3 F = schlick(VoH, f0);
+    hdrReflectionBuffer = vec4(F * reflHit.color, reflHit.material.roughness);
 }
