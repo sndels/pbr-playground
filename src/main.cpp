@@ -218,6 +218,13 @@ int main()
     sync_device *rocket = sync_create_device("sync");
     if (!rocket) cout << "[rocket] failed to init" << endl;
 
+    // Set up tracks not in scene
+    const sync_track* uBloomThreshold = sync_get_track(rocket, "Global:uBloomThreshold");
+    const sync_track* uExposure = sync_get_track(rocket, "Tone:uExposure");
+    const sync_track* uSBloom = sync_get_track(rocket, "Tone:uSBloom");
+    const sync_track* uMBloom = sync_get_track(rocket, "Tone:uMBloom");
+    const sync_track* uLBloom = sync_get_track(rocket, "Tone:uLBloom");
+
     // Set up scenes
     std::string rmFragPath(RES_DIRECTORY);
     rmFragPath += "shader/basic_frag.glsl";
@@ -254,12 +261,6 @@ int main()
     std::string tonemapFragPath(RES_DIRECTORY);
     tonemapFragPath += "shader/tonemap_frag.glsl";
     ShaderProgram tonemapShader(vertPath, tonemapFragPath);
-
-    const sync_track* uExposure = sync_get_track(rocket, "uExposure");
-    const sync_track* uSBloom = sync_get_track(rocket, "uSBloom");
-    const sync_track* uMBloom = sync_get_track(rocket, "uMBloom");
-    const sync_track* uLBloom = sync_get_track(rocket, "uLBloom");
-    const sync_track* uBloomThreshold = sync_get_track(rocket, "uBloomThreshold");
 
 #ifdef TCPROCKET
     // Try connecting to rocket-server
