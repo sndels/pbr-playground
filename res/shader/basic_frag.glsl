@@ -26,9 +26,6 @@ vec3  CAM_TARGET = vec3(0, 0, 0);
 vec3  CAM_UP = vec3(0, 1, 0);
 float CAM_FOV = 65;
 
-// Uniforms
-uniform float uBloomThreshold;
-
 // Textures
 uniform sampler2D uFbmSampler;
 
