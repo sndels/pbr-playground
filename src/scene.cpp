@@ -5,7 +5,11 @@ Scene::Scene(const std::vector<std::string>& shaders,
     _shaderProg(shaders[0], shaders[1], shaders.size() > 2 ? shaders[2] : "")
 {
     for (const auto& u : syncUniforms) {
-        _uniforms.emplace_back(u);
+        std::string cleanUniform = u;
+        int labelEnd = cleanUniform.find_last_of(':');
+        if (labelEnd != std::string::npos)
+            cleanUniform.erase(0, labelEnd + 1);
+        _uniforms.emplace_back(cleanUniform);
         _uLocations.emplace_back(_shaderProg.getULoc(u));
         _syncTracks.emplace_back(sync_get_track(rocket, u.c_str()));
     }
