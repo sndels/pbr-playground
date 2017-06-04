@@ -222,7 +222,7 @@ int main()
     std::string rmFragPath(RES_DIRECTORY);
     rmFragPath += "shader/basic_frag.glsl";
     Scene scene(std::vector<std::string>({vertPath, rmFragPath}),
-                std::vector<std::string>({"uPulse"}), rocket);
+                std::vector<std::string>(), rocket);
 
     // Generate framebuffer for main rendering
     TextureParams rgb16fParams = {GL_RGB16F, GL_RGB, GL_FLOAT,

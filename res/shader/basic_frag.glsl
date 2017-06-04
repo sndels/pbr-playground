@@ -63,8 +63,8 @@ vec3 getViewRay(vec2 fragCoord, vec2 resolution, float fov)
 
 SceneResult scene(vec3 p)
 {
-    SceneResult sphere1 = SceneResult(fSphere(p - vec3(1, 0, 0), 0.75 + uPulse), 0);
-    SceneResult sphere2 = SceneResult(fSphere(p - vec3(-1, 0, 0), 0.75 + uPulse), 1);
+    SceneResult sphere1 = SceneResult(fSphere(p - vec3(1, 0, 0), 0.75), 0);
+    SceneResult sphere2 = SceneResult(fSphere(p - vec3(-1, 0, 0), 0.75), 1);
     SceneResult plane = SceneResult(fPlane(p, vec3(0, 1, 0), 2), 2);
     return opU(opU(sphere1, sphere2), plane);
 }
