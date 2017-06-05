@@ -40,7 +40,7 @@ namespace {
     GLsizei XRES = 1280;
     GLsizei YRES = 720;
     float LOGW = 690.f;
-    float LOGH = 200.f;
+    float LOGH = 210.f;
     float LOGM = 10.f;
     glm::vec2 CURSOR_POS(0,0);
     bool RESIZED = false;

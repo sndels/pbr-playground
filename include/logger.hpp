@@ -78,6 +78,9 @@ struct Logger
         {
             ImGui::TextUnformatted(Buf.begin());
         }
+        // Add empty line to fix scrollbar covering the last line
+        const char* emptyLine = "";
+        ImGui::TextUnformatted(emptyLine, emptyLine);
 
         if (ScrollToBottom)
             ImGui::SetScrollHere(1.0f);
