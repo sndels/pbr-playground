@@ -144,12 +144,7 @@ void main()
     SceneResult result = castRay(rayDir, CAM_POS);
 
     // Check if it missed
-    if (result.dist > MAX_DIST - EPSILON) {
-        hdrBuffer = vec4(0);
-        hdrReflectionBuffer = vec4(0);
-        normalBuffer = vec3(0);
-        return;
-    }
+    if (result.dist > MAX_DIST - EPSILON) return;
 
     // Calculate ray to hit
     vec3 viewRay = result.dist * rayDir;
@@ -168,10 +163,7 @@ void main()
     result = castRay(reflDir, pos);
 
     // Check if it missed
-    if (result.dist > MAX_DIST - EPSILON) {
-        hdrReflectionBuffer = vec4(0);
-        return;
-    }
+    if (result.dist > MAX_DIST - EPSILON) return;
 
     // Calculate ray to hit
     vec3 reflRay = result.dist * reflDir;

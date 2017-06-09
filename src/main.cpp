@@ -356,6 +356,7 @@ int main()
         glViewport(0, 0, XRES, YRES);
         scene.bind(syncRow);
         mainFbo.bindWrite();
+        glClear(GL_COLOR_BUFFER_BIT);
         // Bind global uniforms
         glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
         glUniform2fv(scene.getULoc("uRes"), 1, glm::value_ptr(res));
