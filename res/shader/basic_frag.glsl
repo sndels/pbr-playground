@@ -30,10 +30,10 @@ float CAM_FOV = 65;
 uniform sampler2D uFbmSampler;
 
 // Output
-layout (location = 0) out vec3 posBuffer;
-layout (location = 1) out vec3 normalBuffer;
-layout (location = 2) out vec3 hdrBuffer;
-layout (location = 3) out vec4 hdrReflectionBuffer;
+layout (location = 0) out vec3 hdrBuffer;
+layout (location = 1) out vec4 hdrReflectionBuffer;
+layout (location = 2) out vec3 posBuffer;
+layout (location = 3) out vec3 normalBuffer;
 
 mat3 camOrient(vec3 eye, vec3 target, vec3 up)
 {
@@ -146,10 +146,10 @@ void main()
 
     // Check if it missed
     if (result.dist > MAX_DIST - EPSILON) {
-        posBuffer = vec3(0);
-        normalBuffer = vec3(0);
         hdrBuffer = vec3(0);
         hdrReflectionBuffer = vec4(0);
+        posBuffer = vec3(0);
+        normalBuffer = vec3(0);
         return;
     }
 
@@ -161,8 +161,9 @@ void main()
     HitInfo mainHit = evalHit(pos, rayDir, result.materialIndex);
 
     // Write primary ray to buffers
-    posBuffer = viewRay;
     hdrBuffer = mainHit.color;
+    posBuffer = viewRay;
+    normalBuffer = mainHit.normal;
 
     // Evaluate reflection
     // Cast a ray into scene
