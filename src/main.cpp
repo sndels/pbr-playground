@@ -242,7 +242,7 @@ int main()
                                      GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
                                      GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
     std::vector<TextureParams> mainTexParams({rgb16fParams, rgb16fParams, rgb16fParams,
-                                              rgba16fParams, rgb16fMipParams});
+                                              rgba16fParams});
     FrameBuffer mainFbo(XRES, YRES, mainTexParams);
 
     // Generate additional buffers
@@ -254,9 +254,9 @@ int main()
     FrameBuffer pong4Fbo(XRES / 4, YRES / 4, std::vector<TextureParams>({rgb16fParams}));
 
     // Set up post-processing
-    std::string bloomFragPath(RES_DIRECTORY);
+    /*std::string bloomFragPath(RES_DIRECTORY);
     bloomFragPath += "shader/bloom_frag.glsl";
-    ShaderProgram bloomShader(vertPath, bloomFragPath);
+    ShaderProgram bloomShader(vertPath, bloomFragPath);*/
 
     std::string tonemapFragPath(RES_DIRECTORY);
     tonemapFragPath += "shader/tonemap_frag.glsl";
@@ -330,7 +330,7 @@ int main()
         // Try reloading the shader every 0.5s
         if (rT.getSeconds() > 0.5f) {
             scene.reload();
-            bloomShader.reload();
+            //bloomShader.reload();
             tonemapShader.reload();
             rT.reset();
         }
@@ -351,11 +351,10 @@ int main()
         fbmFbo.bindRead(0, GL_TEXTURE0, scene.getULoc("uFbmSampler"));
         // Render scene to main buffers
         q.render();
-        mainFbo.genMipmap(4);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         sceneProf.endSample();
 
-        bloomProf.startSample();
+        /*bloomProf.startSample();
         // Calculate bloom
         bloomShader.bind();
         // Small kernel
@@ -402,7 +401,7 @@ int main()
         glUniform1i(bloomShader.getULoc("uHorizontal"), 0);
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        bloomProf.endSample();
+        bloomProf.endSample();*/
 
         toneProf.startSample();
         // Bind tonemap/gamma -shader and render final frame
@@ -410,13 +409,7 @@ int main()
         tonemapShader.bind();
         glUniform2fv(tonemapShader.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform1f(tonemapShader.getULoc("uExposure"), (float)sync_get_val(uExposure, syncRow));
-        glUniform1f(tonemapShader.getULoc("uSBloom"), (float)sync_get_val(uSBloom, syncRow));
-        glUniform1f(tonemapShader.getULoc("uMBloom"), (float)sync_get_val(uMBloom, syncRow));
-        glUniform1f(tonemapShader.getULoc("uLBloom"), (float)sync_get_val(uLBloom, syncRow));
         mainFbo.bindRead(2, GL_TEXTURE0, tonemapShader.getULoc("uHdrSampler"));
-        pongFbo.bindRead(0, GL_TEXTURE1, tonemapShader.getULoc("uSBloomSampler"));
-        pong2Fbo.bindRead(0, GL_TEXTURE2, tonemapShader.getULoc("uMBloomSampler"));
-        pong4Fbo.bindRead(0, GL_TEXTURE3, tonemapShader.getULoc("uLBloomSampler"));
         q.render();
         toneProf.endSample();
 

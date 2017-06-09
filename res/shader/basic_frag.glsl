@@ -34,7 +34,6 @@ layout (location = 0) out vec3 posBuffer;
 layout (location = 1) out vec3 normalBuffer;
 layout (location = 2) out vec3 hdrBuffer;
 layout (location = 3) out vec4 hdrReflectionBuffer;
-layout (location = 4) out vec3 bloomBuffer;
 
 mat3 camOrient(vec3 eye, vec3 target, vec3 up)
 {
@@ -151,7 +150,6 @@ void main()
         normalBuffer = vec3(0);
         hdrBuffer = vec3(0);
         hdrReflectionBuffer = vec4(0);
-        bloomBuffer = vec3(0);
         return;
     }
 
@@ -165,11 +163,6 @@ void main()
     // Write primary ray to buffers
     posBuffer = viewRay;
     hdrBuffer = mainHit.color;
-    // Write value to bloom-buffer if bright enough
-    float brightness = dot(mainHit.color, vec3(0.2126, 0.7152, 0.0722));
-    if (any(greaterThan(mainHit.color, vec3(uBloomThreshold))))
-        bloomBuffer = max(vec3(0), mainHit.color - vec3(uBloomThreshold));
-    else bloomBuffer = vec3(0);
 
     // Evaluate reflection
     // Cast a ray into scene
