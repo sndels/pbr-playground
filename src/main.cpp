@@ -231,7 +231,7 @@ int main()
     Scene scene(std::vector<std::string>({vertPath, rmFragPath}),
                 std::vector<std::string>(), rocket);
 
-    // Generate framebuffer for main rendering
+    // Define different texture params
     TextureParams rgb16fParams = {GL_RGB16F, GL_RGB, GL_FLOAT,
                                   GL_LINEAR, GL_LINEAR,
                                   GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
@@ -241,8 +241,9 @@ int main()
     TextureParams rgb16fMipParams = {GL_RGB16F, GL_RGB, GL_FLOAT,
                                      GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
                                      GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
-    std::vector<TextureParams> mainTexParams({rgb16fParams, rgba16fParams, rgb16fParams,
-                                              rgb16fParams});
+
+    // Generate framebuffer for main rendering
+    std::vector<TextureParams> mainTexParams({rgba16fParams, rgba16fParams, rgb16fParams});
     FrameBuffer mainFbo(XRES, YRES, mainTexParams);
 
     // Generate additional buffers
