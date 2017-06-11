@@ -162,8 +162,11 @@ void main()
     vec3 reflDir = reflect(rayDir, mainHit.normal);
     result = castRay(reflDir, pos);
 
-    // Check if it missed
-    if (result.dist > MAX_DIST - EPSILON) return;
+    // Check if it missed, only write roughness to buffer
+    if (result.dist > MAX_DIST - EPSILON) {
+        hdrReflectionBuffer = vec4(0, 0, 0, mainHit.material.roughness);
+        return;
+    }
 
     // Calculate ray to hit
     vec3 reflRay = result.dist * reflDir;
@@ -176,5 +179,5 @@ void main()
     vec3 f0 = mix(vec3(0.04), reflHit.material.albedo, reflHit.material.metalness);
     float VoH = max(dot(-rayDir, normalize(-rayDir + reflDir)), 0);
     vec3 F = schlick(VoH, f0);
-    hdrReflectionBuffer = vec4(F * reflHit.color, reflHit.material.roughness);
+    hdrReflectionBuffer = vec4(F * reflHit.color, mainHit.material.roughness);
 }

@@ -238,16 +238,20 @@ int main()
     TextureParams rgba16fParams = {GL_RGBA16F, GL_RGBA, GL_FLOAT,
                                   GL_LINEAR, GL_LINEAR,
                                   GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
+    TextureParams rgba16fMipParams = {GL_RGBA16F, GL_RGBA, GL_FLOAT,
+                                      GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
+                                      GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
     TextureParams rgb16fMipParams = {GL_RGB16F, GL_RGB, GL_FLOAT,
                                      GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR,
                                      GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER};
 
     // Generate framebuffer for main rendering
-    std::vector<TextureParams> mainTexParams({rgba16fParams, rgba16fParams, rgb16fParams});
+    std::vector<TextureParams> mainTexParams({rgba16fParams, rgba16fMipParams, rgb16fParams});
     FrameBuffer mainFbo(XRES, YRES, mainTexParams);
 
     // Generate additional buffers
     FrameBuffer bloomFbo(XRES, YRES, std::vector<TextureParams>({rgb16fMipParams}));
+    FrameBuffer reflCompoFbo(XRES, YRES, std::vector<TextureParams>({rgb16fParams}));
     FrameBuffer pingFbo(XRES, YRES, std::vector<TextureParams>({rgb16fParams}));
     FrameBuffer pongFbo(XRES, YRES, std::vector<TextureParams>({rgb16fParams}));
     FrameBuffer ping2Fbo(XRES / 2, YRES / 2, std::vector<TextureParams>({rgb16fParams}));
@@ -256,6 +260,14 @@ int main()
     FrameBuffer pong4Fbo(XRES / 4, YRES / 4, std::vector<TextureParams>({rgb16fParams}));
 
     // Set up post-processing
+    std::string reflBoxFragPath(RES_DIRECTORY);
+    reflBoxFragPath += "shader/refl_gaussian_frag.glsl";
+    ShaderProgram reflGaussianShader(vertPath, reflBoxFragPath);
+
+    std::string reflCompoFragPath(RES_DIRECTORY);
+    reflCompoFragPath += "shader/refl_compo_frag.glsl";
+    ShaderProgram reflCompoShader(vertPath, reflCompoFragPath);
+
     std::string preBloomFragPath(RES_DIRECTORY);
     preBloomFragPath += "shader/pre_bloom_frag.glsl";
     ShaderProgram preBloomShader(vertPath, preBloomFragPath);
@@ -282,6 +294,7 @@ int main()
     Timer rT;
     Timer gT;
     GpuProfiler sceneProf(5);
+    GpuProfiler reflProf(5);
     GpuProfiler bloomProf(5);
     GpuProfiler toneProf(5);
 
@@ -297,6 +310,7 @@ int main()
         if (RESIZED) {
             mainFbo.resize(XRES, YRES);
             bloomFbo.resize(XRES, YRES);
+            reflCompoFbo.resize(XRES, YRES);
             pingFbo.resize(XRES, YRES);
             pongFbo.resize(XRES, YRES);
             ping2Fbo.resize(XRES / 2, YRES / 2);
@@ -326,8 +340,8 @@ int main()
             ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
             ImGui::SetNextWindowPos(ImVec2(LOGM, YRES - LOGH - LOGM), ImGuiSetCond_Always);
             ImGui::Begin("Log", &showLog, logWindowFlags);
-            ImGui::Text("FPS: %.1f Scene: %.1f Bloom: %.1f Tone: %.1f",
-                        ImGui::GetIO().Framerate, sceneProf.getAvg(),
+            ImGui::Text("FPS: %.1f Scene: %.1f Refl: %.1f, Bloom: %.1f Tone: %.1f",
+                        ImGui::GetIO().Framerate, sceneProf.getAvg(), reflProf.getAvg(),
                         bloomProf.getAvg(), toneProf.getAvg());
             if (logCout.str().length() != 0) {
                 logger.AddLog("%s", logCout.str().c_str());
@@ -341,6 +355,8 @@ int main()
         // Try reloading the shader every 0.5s
         if (rT.getSeconds() > 0.5f) {
             scene.reload();
+            reflGaussianShader.reload();
+            reflCompoShader.reload();
             preBloomShader.reload();
             gaussianShader.reload();
             postBloomShader.reload();
@@ -348,8 +364,10 @@ int main()
             rT.reset();
         }
 
-        // Set res-vec for use in shaders
+        // Set res-vecs for use in shaders
         glm::vec2 res(XRES,YRES);
+        glm::vec2 res2 = 0.5f * res;
+        glm::vec2 res4 = 0.25f * res;
 
         sceneProf.startSample();
         // Bind scene and main buffers
@@ -364,8 +382,32 @@ int main()
         fbmFbo.bindRead(0, GL_TEXTURE0, scene.getULoc("uFbmSampler"));
         // Render scene to main buffers
         q.render();
+        // Generate mipmaps for reflections
+        mainFbo.genMipmap(1);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         sceneProf.endSample();
+
+        // Blurred reflections
+        reflProf.startSample();
+        // Blur pass
+        reflGaussianShader.bind();
+        glViewport(0, 0, XRES, YRES);
+        pingFbo.bindWrite();
+        glUniform2fv(reflGaussianShader.getULoc("uRes"), 1, glm::value_ptr(res));
+        mainFbo.bindRead(1, GL_TEXTURE0, reflGaussianShader.getULoc("uReflectionSampler"));
+        mainFbo.bindRead(0, GL_TEXTURE1, reflGaussianShader.getULoc("uColorSampler"));
+        q.render();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        // Composite with primary color
+        reflCompoShader.bind();
+        glViewport(0, 0, XRES, YRES);
+        reflCompoFbo.bindWrite();
+        glUniform2fv(reflCompoShader.getULoc("uRes"), 1, glm::value_ptr(res));
+        mainFbo.bindRead(0, GL_TEXTURE0, reflCompoShader.getULoc("uColorSampler"));
+        pingFbo.bindRead(0, GL_TEXTURE1, reflCompoShader.getULoc("uBlurredReflectionSampler"));
+        q.render();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        reflProf.endSample();
 
         bloomProf.startSample();
         preBloomShader.bind();
@@ -374,7 +416,7 @@ int main()
         bloomFbo.bindWrite();
         glUniform2fv(preBloomShader.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform1f(preBloomShader.getULoc("uBloomThreshold"), (float)sync_get_val(uBloomThreshold, syncRow));
-        mainFbo.bindRead(0, GL_TEXTURE0, gaussianShader.getULoc("uColorSampler"));
+        reflCompoFbo.bindRead(0, GL_TEXTURE0, gaussianShader.getULoc("uColorSampler"));
         q.render();
         bloomFbo.genMipmap(0);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -395,7 +437,6 @@ int main()
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         // Medium kernel
-        glm::vec2 res2 = 0.5f * res;
         glViewport(0, 0, XRES / 2, YRES / 2);
         ping2Fbo.bindWrite();
         glUniform2fv(gaussianShader.getULoc("uRes"), 1, glm::value_ptr(res2));
@@ -410,7 +451,6 @@ int main()
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         // Large kernel
-        glm::vec2 res4 = 0.25f * res;
         glViewport(0, 0, XRES / 4, YRES / 4);
         ping4Fbo.bindWrite();
         glUniform2fv(gaussianShader.getULoc("uRes"), 1, glm::value_ptr(res4));
@@ -428,7 +468,7 @@ int main()
         // Combine kernels to final bloom
         postBloomShader.bind();
         glViewport(0, 0, XRES, YRES);
-        pingFbo.bindWrite();
+        mainFbo.bindWrite();
         glUniform2fv(postBloomShader.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform1f(postBloomShader.getULoc("uSBloom"), (float)sync_get_val(uSBloom, syncRow));
         glUniform1f(postBloomShader.getULoc("uMBloom"), (float)sync_get_val(uMBloom, syncRow));
@@ -436,7 +476,7 @@ int main()
         pongFbo.bindRead(0, GL_TEXTURE0, postBloomShader.getULoc("uSBloomSampler"));
         pong2Fbo.bindRead(0, GL_TEXTURE1, postBloomShader.getULoc("uMBloomSampler"));
         pong4Fbo.bindRead(0, GL_TEXTURE2, postBloomShader.getULoc("uLBloomSampler"));
-        mainFbo.bindRead(0, GL_TEXTURE3, postBloomShader.getULoc("uColorSampler"));
+        reflCompoFbo.bindRead(0, GL_TEXTURE3, postBloomShader.getULoc("uColorSampler"));
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         bloomProf.endSample();
@@ -447,7 +487,7 @@ int main()
         tonemapShader.bind();
         glUniform2fv(tonemapShader.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform1f(tonemapShader.getULoc("uExposure"), (float)sync_get_val(uExposure, syncRow));
-        pingFbo.bindRead(0, GL_TEXTURE0, tonemapShader.getULoc("uHdrSampler"));
+        mainFbo.bindRead(0, GL_TEXTURE0, tonemapShader.getULoc("uHdrSampler"));
         q.render();
         toneProf.endSample();
 
