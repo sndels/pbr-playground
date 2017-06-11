@@ -7,7 +7,7 @@
 
 // Lights (shading.glsl uses NUM_LIGHTS)
 const int NUM_LIGHTS = 1;
-vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(1, 1, -2));
+vec3      LIGHT_POS[NUM_LIGHTS] = vec3[](vec3(0, 3, 0));
 vec3      LIGHT_INT[NUM_LIGHTS] = vec3[](vec3(20));
 
 #include "hg_sdf.glsl"
@@ -21,10 +21,10 @@ const float MAX_DIST = 100;
 const float EPSILON = 0.0001;
 
 // Camera
-vec3  CAM_POS = vec3(0, 1, -4);
-vec3  CAM_TARGET = vec3(0, 0, 0);
+vec3  CAM_POS = vec3(0, 5, -6);
+vec3  CAM_TARGET = vec3(0, -1, 0);
 vec3  CAM_UP = vec3(0, 1, 0);
-float CAM_FOV = 65;
+float CAM_FOV = 45;
 
 // Textures
 uniform sampler2D uFbmSampler;
@@ -60,7 +60,7 @@ SceneResult scene(vec3 p)
 {
     SceneResult sphere1 = SceneResult(fSphere(p - vec3(1, 0, 0), 0.75), 0);
     SceneResult sphere2 = SceneResult(fSphere(p - vec3(-1, 0, 0), 0.75), 1);
-    SceneResult plane = SceneResult(fPlane(p, vec3(0, 1, 0), 2), 2);
+    SceneResult plane = SceneResult(fPlane(p, vec3(0, 1, 0), 2), 3);
     return opU(opU(sphere1, sphere2), plane);
 }
 
@@ -99,8 +99,10 @@ Material evalMaterial(vec3 p, float matI)
         mat = mixMaterials(steel, redPlasma, clamp(pow(4 * fbm(p + 3.3), 8), 0, 1));
         if (length(mat.emissivity) > 0) mat.emissivity *= 0.5 * sin(uGT * 2) + 1.2;
     } else {
-        mat = sand;
-        mat.metalness = 0.5 * clamp(fbm(p * 0.15 - vec3(0, sin(uGT * 0.2), uGT * 0.2)), 0, 1);
+        mat.albedo = vec3(0.005);
+        mat.roughness = clamp(6 * pow(fbm((p + 3) * 0.4), 2), 0.0, 0.3);
+        mat.metalness = 0;
+        mat.emissivity = vec3(0);
     }
     return mat;
 }
@@ -158,6 +160,12 @@ void main()
     normalBuffer = mainHit.normal;
 
     // Evaluate reflection
+    // Early out if material is very rough
+    if (mainHit.material.roughness > 0.99) {
+        hdrReflectionBuffer = vec4(0, 0, 0, mainHit.material.roughness);
+        return;
+    }
+
     // Cast a ray into scene
     vec3 reflDir = reflect(rayDir, mainHit.normal);
     result = castRay(reflDir, pos);
@@ -176,7 +184,7 @@ void main()
     HitInfo reflHit = evalHit(pos, reflDir, result.materialIndex);
 
     // Calculate intensity of reflection based on fresnel of primary surface
-    vec3 f0 = mix(vec3(0.04), reflHit.material.albedo, reflHit.material.metalness);
+    vec3 f0 = mix(vec3(0.04), mainHit.material.albedo, mainHit.material.metalness);
     float VoH = max(dot(-rayDir, normalize(-rayDir + reflDir)), 0);
     vec3 F = schlick(VoH, f0);
     hdrReflectionBuffer = vec4(F * reflHit.color, mainHit.material.roughness);
