@@ -1,3 +1,5 @@
+#define INF 1.0 / 0
+
 vec3 rotateX(vec3 p, float rad)
 {
     float c = cos(rad);
