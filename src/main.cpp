@@ -347,9 +347,9 @@ int main()
             ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
             ImGui::SetNextWindowPos(ImVec2(LOGM, YRES - LOGH - LOGM), ImGuiSetCond_Always);
             ImGui::Begin("Log", &showLog, logWindowFlags);
-            ImGui::Text("FPS: %.1f Scene: %.1f Refl: %.1f, Bloom: %.1f Tone: %.1f",
-                        ImGui::GetIO().Framerate, sceneProf.getAvg(), reflProf.getAvg(),
-                        bloomProf.getAvg(), toneProf.getAvg());
+            ImGui::Text("Frame: %.1f Scene: %.1f Refl: %.1f, Bloom: %.1f Tone: %.1f",
+                        1000.f / ImGui::GetIO().Framerate, sceneProf.getAvg(),
+                        reflProf.getAvg(), bloomProf.getAvg(), toneProf.getAvg());
             if (logCout.str().length() != 0) {
                 logger.AddLog("%s", logCout.str().c_str());
                 logCout.str("");
