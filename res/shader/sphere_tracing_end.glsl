@@ -79,7 +79,13 @@ void main()
     SceneResult result = castRay(rayDir, camPos);
 
     // Check if it missed
-    if (result.dist > MAX_DIST - EPSILON) return;
+    if (result.dist > MAX_DIST - EPSILON) {
+        // TODO: Find out why glClear doesn't do this
+        hdrBuffer = vec4(0);
+        hdrReflectionBuffer = vec4(0);
+        normalBuffer = vec3(0);
+        return;
+    }
 
     // Calculate ray to hit
     vec3 viewRay = result.dist * rayDir;
