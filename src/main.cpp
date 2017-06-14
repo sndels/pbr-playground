@@ -219,6 +219,13 @@ int main()
     if (!rocket) cout << "[rocket] failed to init" << endl;
 
     // Set up tracks not in scene
+    const sync_track* uCamPosX = sync_get_track(rocket, "Camera:uCamPosX");
+    const sync_track* uCamPosY = sync_get_track(rocket, "Camera:uCamPosY");
+    const sync_track* uCamPosZ = sync_get_track(rocket, "Camera:uCamPosZ");
+    const sync_track* uCamTargetX = sync_get_track(rocket, "Camera:uCamTargetX");
+    const sync_track* uCamTargetY = sync_get_track(rocket, "Camera:uCamTargetY");
+    const sync_track* uCamTargetZ = sync_get_track(rocket, "Camera:uCamTargetZ");
+    const sync_track* uCamFov = sync_get_track(rocket, "Camera:uCamFov");
     const sync_track* uBloomThreshold = sync_get_track(rocket, "Global:uBloomThreshold");
     const sync_track* uExposure = sync_get_track(rocket, "Tone:uExposure");
     const sync_track* uSBloom = sync_get_track(rocket, "Tone:uSBloom");
@@ -379,6 +386,13 @@ int main()
         glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
         glUniform2fv(scene.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform2fv(scene.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
+        glUniform1f(scene.getULoc("uCamPosX"), (float)sync_get_val(uCamPosX, syncRow));
+        glUniform1f(scene.getULoc("uCamPosY"), (float)sync_get_val(uCamPosY, syncRow));
+        glUniform1f(scene.getULoc("uCamPosZ"), (float)sync_get_val(uCamPosZ, syncRow));
+        glUniform1f(scene.getULoc("uCamTargetX"), (float)sync_get_val(uCamTargetX, syncRow));
+        glUniform1f(scene.getULoc("uCamTargetY"), (float)sync_get_val(uCamTargetY, syncRow));
+        glUniform1f(scene.getULoc("uCamTargetZ"), (float)sync_get_val(uCamTargetZ, syncRow));
+        glUniform1f(scene.getULoc("uCamFov"), (float)sync_get_val(uCamFov, syncRow));
         fbmFbo.bindRead(0, GL_TEXTURE0, scene.getULoc("uFbmSampler"));
         // Render scene to main buffers
         q.render();

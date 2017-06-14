@@ -1,9 +1,11 @@
-// Camera
-// TODO: Implement as rocket-tracks
-vec3  CAM_POS = vec3(0, 5, -6);
-vec3  CAM_TARGET = vec3(0, -1, 0);
-vec3  CAM_UP = vec3(0, 1, 0);
-float CAM_FOV = 45;
+// Camera uniforms
+uniform float uCamPosX;
+uniform float uCamPosY;
+uniform float uCamPosZ;
+uniform float uCamTargetX;
+uniform float uCamTargetY;
+uniform float uCamTargetZ;
+uniform float uCamFov;
 
 vec3 mouseLook(vec3 viewDir)
 {
