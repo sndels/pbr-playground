@@ -227,6 +227,8 @@ int main()
     const sync_track* uCamTargetZ = sync_get_track(rocket, "Camera:uCamTargetZ");
     const sync_track* uCamFov = sync_get_track(rocket, "Camera:uCamFov");
     const sync_track* uBloomThreshold = sync_get_track(rocket, "Global:uBloomThreshold");
+    const sync_track* uCAberrX = sync_get_track(rocket, "Tone:uCAberrX");
+    const sync_track* uCAberrY = sync_get_track(rocket, "Tone:uCAberrY");
     const sync_track* uExposure = sync_get_track(rocket, "Tone:uExposure");
     const sync_track* uSBloom = sync_get_track(rocket, "Tone:uSBloom");
     const sync_track* uMBloom = sync_get_track(rocket, "Tone:uMBloom");
@@ -287,6 +289,10 @@ int main()
     postBloomFragPath += "shader/post_bloom_frag.glsl";
     ShaderProgram postBloomShader(vertPath, postBloomFragPath);
 
+    std::string cAberrFragPath(RES_DIRECTORY);
+    cAberrFragPath += "shader/chromatic_aberration_frag.glsl";
+    ShaderProgram cAberrShader(vertPath, cAberrFragPath);
+
     std::string tonemapFragPath(RES_DIRECTORY);
     tonemapFragPath += "shader/tonemap_frag.glsl";
     ShaderProgram tonemapShader(vertPath, tonemapFragPath);
@@ -303,6 +309,7 @@ int main()
     GpuProfiler sceneProf(5);
     GpuProfiler reflProf(5);
     GpuProfiler bloomProf(5);
+    GpuProfiler cAberrProf(5);
     GpuProfiler toneProf(5);
 
 #ifdef MUSIC_AUTOPLAY
@@ -347,9 +354,10 @@ int main()
             ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
             ImGui::SetNextWindowPos(ImVec2(LOGM, YRES - LOGH - LOGM), ImGuiSetCond_Always);
             ImGui::Begin("Log", &showLog, logWindowFlags);
-            ImGui::Text("Frame: %.1f Scene: %.1f Refl: %.1f, Bloom: %.1f Tone: %.1f",
+            ImGui::Text("Frame: %.1f Scene: %.1f Refl: %.1f, Bloom: %.1f CAberr: %.1f Tone: %.1f",
                         1000.f / ImGui::GetIO().Framerate, sceneProf.getAvg(),
-                        reflProf.getAvg(), bloomProf.getAvg(), toneProf.getAvg());
+                        reflProf.getAvg(), bloomProf.getAvg(), cAberrProf.getAvg(),
+                        toneProf.getAvg());
             if (logCout.str().length() != 0) {
                 logger.AddLog("%s", logCout.str().c_str());
                 logCout.str("");
@@ -367,6 +375,7 @@ int main()
             preBloomShader.reload();
             gaussianShader.reload();
             postBloomShader.reload();
+            cAberrShader.reload();
             tonemapShader.reload();
             rT.reset();
         }
@@ -494,13 +503,26 @@ int main()
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         bloomProf.endSample();
 
+        // Apply "chromatic aberration"
+        cAberrProf.startSample();
+        cAberrShader.bind();
+        glViewport(0, 0, XRES, YRES);
+        pingFbo.bindWrite();
+        glUniform2fv(cAberrShader.getULoc("uRes"), 1, glm::value_ptr(res));
+        glUniform1f(cAberrShader.getULoc("uCAberrX"), (float)sync_get_val(uCAberrX, syncRow));
+        glUniform1f(cAberrShader.getULoc("uCAberrY"), (float)sync_get_val(uCAberrY, syncRow));
+        mainFbo.bindRead(0, GL_TEXTURE0, cAberrShader.getULoc("uColorSampler"));
+        q.render();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        cAberrProf.endSample();
+
         toneProf.startSample();
         // Bind tonemap/gamma -shader and render final frame
         glViewport(0, 0, XRES, YRES);
         tonemapShader.bind();
         glUniform2fv(tonemapShader.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform1f(tonemapShader.getULoc("uExposure"), (float)sync_get_val(uExposure, syncRow));
-        mainFbo.bindRead(0, GL_TEXTURE0, tonemapShader.getULoc("uHdrSampler"));
+        pingFbo.bindRead(0, GL_TEXTURE0, tonemapShader.getULoc("uHdrSampler"));
         q.render();
         toneProf.endSample();
 
