@@ -227,8 +227,7 @@ int main()
     const sync_track* uCamTargetZ = sync_get_track(rocket, "Camera:uCamTargetZ");
     const sync_track* uCamFov = sync_get_track(rocket, "Camera:uCamFov");
     const sync_track* uBloomThreshold = sync_get_track(rocket, "Global:uBloomThreshold");
-    const sync_track* uCAberrX = sync_get_track(rocket, "Tone:uCAberrX");
-    const sync_track* uCAberrY = sync_get_track(rocket, "Tone:uCAberrY");
+    const sync_track* uCAberr = sync_get_track(rocket, "Tone:uCAberr");
     const sync_track* uExposure = sync_get_track(rocket, "Tone:uExposure");
     const sync_track* uSBloom = sync_get_track(rocket, "Tone:uSBloom");
     const sync_track* uMBloom = sync_get_track(rocket, "Tone:uMBloom");
@@ -509,8 +508,7 @@ int main()
         glViewport(0, 0, XRES, YRES);
         pingFbo.bindWrite();
         glUniform2fv(cAberrShader.getULoc("uRes"), 1, glm::value_ptr(res));
-        glUniform1f(cAberrShader.getULoc("uCAberrX"), (float)sync_get_val(uCAberrX, syncRow));
-        glUniform1f(cAberrShader.getULoc("uCAberrY"), (float)sync_get_val(uCAberrY, syncRow));
+        glUniform1f(cAberrShader.getULoc("uCAberr"), (float)sync_get_val(uCAberr, syncRow));
         mainFbo.bindRead(0, GL_TEXTURE0, cAberrShader.getULoc("uColorSampler"));
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
