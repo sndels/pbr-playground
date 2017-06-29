@@ -7,3 +7,6 @@
 [submodule "ext/rocket"]
 	path = ext/rocket
 	url = https://github.com/kusma/rocket.git
+[submodule "ext/glm"]
+	path = ext/glm
+	url = https://github.com/g-truc/glm.git
