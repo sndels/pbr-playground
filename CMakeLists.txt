@@ -15,19 +15,13 @@ else()
 endif()
 
 find_package(OpenGL REQUIRED)
-if (MSVC)
-    find_package(GLFW REQUIRED)
-else()
-    find_package(glfw3 REQUIRED)
-endif()
-find_package(glm REQUIRED)
 
 file(GLOB_RECURSE SOURCES src/*.cpp)
 file(GLOB_RECURSE HEADERS include/*.hpp)
 
 add_subdirectory(ext)
 
-include_directories(include ext/rocket/lib ext/bass)
+include_directories(include ext/rocket/lib ext/bass ext/glm ext/glfw/include)
 
 # Add full path to res directory
 add_definitions(-DRES_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/res/")
@@ -38,15 +32,10 @@ add_executable(skunkwork WIN32
     ${HEADERS}
 )
 
-target_include_directories(skunkwork
-    PRIVATE
-    ${GLFW_INCLUDE_DIR}
-    ${GLM_INCLUDE_DIR}
-)
-
 target_link_libraries(skunkwork
     PRIVATE
     ${OPENGL_LIBRARIES}
+    glfw
     libgl3w
     librocket
     imgui
@@ -54,19 +43,16 @@ target_link_libraries(skunkwork
 if (MSVC)
     target_link_libraries(skunkwork
         PRIVATE
-        ${GLFW_LIBRARIES}
         ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/lib/bass.lib
     )
 elseif (APPLE)
     target_link_libraries(skunkwork
         PRIVATE
-        glfw
         ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/lib/libbass.dylib
     )
 else()
     target_link_libraries(skunkwork
         PRIVATE
-        glfw
         ${CMAKE_CURRENT_SOURCE_DIR}/ext/bass/lib/libbass.so
     )
 endif()

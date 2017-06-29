@@ -1,5 +1,6 @@
 # Libraries
 add_subdirectory(libgl3w)
+add_subdirectory(glfw)
 
 add_library(imgui
     STATIC
@@ -10,7 +11,7 @@ add_library(imgui
 )
 target_include_directories(imgui
     PUBLIC
-    ${GLFW_INCLUDE_DIR}
+    glfw/include
     imgui
     imgui/examples/opengl3_example
 )
