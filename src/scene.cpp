@@ -10,7 +10,7 @@ Scene::Scene(const std::vector<std::string>& shaders,
         if (labelEnd != std::string::npos)
             cleanUniform.erase(0, labelEnd + 1);
         _uniforms.emplace_back(cleanUniform);
-        _uLocations.emplace_back(_shaderProg.getULoc(u));
+        _uLocations.emplace_back(_shaderProg.getULoc(cleanUniform));
         _syncTracks.emplace_back(sync_get_track(rocket, u.c_str()));
     }
 }
