@@ -530,6 +530,10 @@ int main()
 #endif // GUI
 
         glfwSwapBuffers(windowPtr);
+
+#ifdef MUSIC_AUTOPLAY
+        if (!AudioStream::getInstance().isPlaying()) glfwSetWindowShouldClose(windowPtr, GLFW_TRUE);
+#endif // MUSIC_AUTOPLAY
     }
 
     // Save rocket tracks
