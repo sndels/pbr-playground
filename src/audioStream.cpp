@@ -16,6 +16,7 @@ void AudioStream::pauseStream(void* stream, int32_t flag)
     if (flag) BASS_ChannelPause(streamHandle);
     else BASS_ChannelPlay(streamHandle, false);
 }
+
 void AudioStream::setStreamRow(void* stream, int32_t row)
 {
     int32_t streamHandle = *(int32_t*)stream;
@@ -55,6 +56,10 @@ void AudioStream::play()
     BASS_Start();
     BASS_ChannelPlay(_streamHandle, _shouldRestart);
     _shouldRestart = false;
+}
+
+bool AudioStream::isPlaying() {
+    return BASS_ChannelIsActive(_streamHandle) == BASS_ACTIVE_PLAYING;
 }
 
 void AudioStream::pause()

@@ -25,6 +25,7 @@ public:
     void init(const std::string& filePath, double bpm, int32_t rpb);
     int32_t getStreamHandle();
     void play();
+    bool isPlaying();
     void pause();
     void stop();
     double getRow() const;
