@@ -26,11 +26,11 @@ Material evalMaterial(vec3 p, float matI)
 {
     Material mat;
     if (matI < 1) {
+        mat = mixMaterials(brushedAlu, redPlasma, clamp(pow(4 * fbm(p + 3.3), 8), 0, 1));
+        if (length(mat.emissivity) > 0) mat.emissivity *= 0.5 * sin(uGT * 2) + 1.2;
+    } else if (matI < 2) {
         mat = mixMaterials(steel, rust, clamp(pow(4 * fbm(p + 3.6), 8), 0, 1));
         if (mat.metalness < 0.9) mat.metalness += 0.5 * fbm(p * 8);
-    } else if (matI < 2) {
-        mat = mixMaterials(steel, redPlasma, clamp(pow(4 * fbm(p + 3.3), 8), 0, 1));
-        if (length(mat.emissivity) > 0) mat.emissivity *= 0.5 * sin(uGT * 2) + 1.2;
     } else {
         mat.albedo = vec3(0.005);
         mat.roughness = clamp(6 * pow(fbm((p + 3) * 0.4), 2), 0.0, 0.3);

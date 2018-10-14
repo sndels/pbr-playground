@@ -68,8 +68,8 @@ HitInfo evalHit(vec3 p, vec3 rd, float matI)
 
 void main()
 {
-    vec3 camPos = vec3(uCamPosX, uCamPosY, uCamPosZ);
-    vec3 camTarget = vec3(uCamTargetX, uCamTargetY, uCamTargetZ);
+    vec3 camPos = vec3(uCamPos.x, uCamPos.y, uCamPos.z);
+    vec3 camTarget = vec3(uCamTarget.x, uCamTarget.y, uCamTarget.z);
     // Calculate view ray direction in scene space, include mouselook
     vec3 rayDir = getViewRay(gl_FragCoord.xy, uRes, uCamFov);
     rayDir = camOrient(camPos, camTarget, vec3(0, 1, 0)) * rayDir;

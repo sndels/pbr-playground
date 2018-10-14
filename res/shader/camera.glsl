@@ -1,10 +1,6 @@
 // Camera uniforms
-uniform float uCamPosX;
-uniform float uCamPosY;
-uniform float uCamPosZ;
-uniform float uCamTargetX;
-uniform float uCamTargetY;
-uniform float uCamTargetZ;
+uniform vec3 uCamPos;
+uniform vec3 uCamTarget;
 uniform float uCamFov;
 
 vec3 mouseLook(vec3 viewDir)

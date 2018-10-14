@@ -11,7 +11,7 @@ struct SceneResult {
 };
 
 Material brushedAlu = Material(vec3(0.913, 0.921, 0.925), 0.65, 1, vec3(0));
-Material steel =      Material(vec3(0.24), 0.55, 1, vec3(0));
+Material steel =      Material(vec3(0.24), 0.35, 1, vec3(0));
 Material rust =       Material(vec3(0.23, 0.07, 0.01), 0.8, 0.8, vec3(0));
 Material redPaint =   Material(vec3(0.913, 0, 0), 0.1, 0, vec3(0));
 Material sand =       Material(vec3(0.5, 0.45, 0.2), 1, 0, vec3(0));

@@ -3,9 +3,7 @@
 #include "uniforms.glsl"
 
 // Inputs
-uniform float uSBloom;
-uniform float uMBloom;
-uniform float uLBloom;
+uniform vec3 uBloom;
 uniform sampler2D uSBloomSampler;
 uniform sampler2D uMBloomSampler;
 uniform sampler2D uLBloomSampler;
@@ -19,8 +17,8 @@ void main()
 {
     vec2 texCoord = gl_FragCoord.xy / uRes;
     vec3 color = vec3(0);
-    color += uSBloom * texture(uSBloomSampler, texCoord).rgb;
-    color += uMBloom * texture(uMBloomSampler, texCoord).rgb;
-    color += uLBloom * texture(uLBloomSampler, texCoord).rgb;
+    color += uBloom.x * texture(uSBloomSampler, texCoord).rgb;
+    color += uBloom.y * texture(uMBloomSampler, texCoord).rgb;
+    color += uBloom.z * texture(uLBloomSampler, texCoord).rgb;
     colorBuffer = texture(uColorSampler, texCoord).rgb + color;
 }

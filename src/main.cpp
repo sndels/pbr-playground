@@ -11,10 +11,7 @@
 #include <imgui_impl_glfw_gl3.h>
 #include <iostream>
 #include <sstream>
-#include <sync.h>
-#include <track.h>
 
-#include "audioStream.hpp"
 #include "frameBuffer.hpp"
 #include "logger.hpp"
 #include "gpuProfiler.hpp"
@@ -24,19 +21,12 @@
 #include "texture.hpp"
 #include "timer.hpp"
 
-// Comment out to disable autoplay without tcp-Rocket
-//#define MUSIC_AUTOPLAY
-// Comment out to load sync from files
-#define TCPROCKET
-// Comment out to remove gui
-#define GUI
-
 using std::cout;
 using std::cerr;
 using std::endl;
 
 namespace {
-    const static char* WINDOW_TITLE = "skunkwork";
+    const static char* WINDOW_TITLE = "pbr-playground";
     GLsizei XRES = 1280;
     GLsizei YRES = 720;
     float LOGW = 690.f;
@@ -44,43 +34,39 @@ namespace {
     float LOGM = 10.f;
     glm::vec2 CURSOR_POS(0,0);
     bool RESIZED = false;
-}
 
-//Set up audio callbacks for rocket
-static struct sync_cb audioSync = {
-    AudioStream::pauseStream,
-    AudioStream::setStreamRow,
-    AudioStream::isStreamPlaying
-};
+    glm::vec3 uCamPos(0, 2.5, -5);
+    glm::vec3 uCamTarget(0, 0, 0);
+    float uCamFov = 90;
+    float uBloomThreshold = 1;
+    glm::vec3 uBloom(1, 1, 1);
+    float uCAberr = 0;
+    float uExposure = 1;
+}
 
 void keyCallback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t action,
                  int32_t mods)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
-#ifdef GUI
     else
         ImGui_ImplGlfwGL3_KeyCallback(window, key, scancode, action, mods);
-#endif // GUI
 }
 
 void cursorCallback(GLFWwindow* window, double xpos, double ypos)
 {
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+    if (!ImGui::IsMouseHoveringAnyWindow() &&
+        glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
         CURSOR_POS = glm::vec2(2 * xpos / XRES - 1.0, 2 * (YRES - ypos) / YRES - 1.0);
     }
 }
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
-#ifdef GUI
     if (ImGui::IsMouseHoveringAnyWindow()) {
         ImGui_ImplGlfwGL3_MouseButtonCallback(window, button, action, mods);
         return;
-    }
-#endif //GUI
-
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+    } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
         CURSOR_POS = glm::vec2(2 * xpos / XRES - 1.0, 2 * (YRES - ypos) / YRES - 1.0);
@@ -102,12 +88,8 @@ static void errorCallback(int error, const char* description)
 }
 
 #ifdef _WIN32
-int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
+int APIENTRY WinMain(HINSTANCE, HINSTANCE, PSTR, INT)
 {
-    (void) hInstance;
-    (void) hPrevInstance;
-    (void) lpCmdLine;
-    (void) nCmdShow;
 #else
 int main()
 {
@@ -152,7 +134,6 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-#ifdef GUI
     // Setup imgui
     ImGui_ImplGlfwGL3_Init(windowPtr, true);
     ImGuiWindowFlags logWindowFlags= 0;
@@ -169,7 +150,6 @@ int main()
     // Capture cout for logging
     std::stringstream logCout;
     std::streambuf* oldCout = std::cout.rdbuf(logCout.rdbuf());
-#endif // GUI
 
     // Set glfw-callbacks, these will pass to imgui's callbacks if overridden
     glfwSetWindowSizeCallback(windowPtr, windowSizeCallback);
@@ -208,36 +188,11 @@ int main()
     // Set actual viewport size
     glViewport(0, 0, XRES, YRES);
 
-    // Set up audio
-    std::string musicPath(RES_DIRECTORY);
-    musicPath += "music/illegal_af.mp3";
-    AudioStream::getInstance().init(musicPath, 175.0, 8);
-    int32_t streamHandle = AudioStream::getInstance().getStreamHandle();
-
-    // Set up rocket
-    sync_device *rocket = sync_create_device("sync");
-    if (!rocket) cout << "[rocket] failed to init" << endl;
-
-    // Set up tracks not in scene
-    const sync_track* uCamPosX = sync_get_track(rocket, "Camera:uCamPosX");
-    const sync_track* uCamPosY = sync_get_track(rocket, "Camera:uCamPosY");
-    const sync_track* uCamPosZ = sync_get_track(rocket, "Camera:uCamPosZ");
-    const sync_track* uCamTargetX = sync_get_track(rocket, "Camera:uCamTargetX");
-    const sync_track* uCamTargetY = sync_get_track(rocket, "Camera:uCamTargetY");
-    const sync_track* uCamTargetZ = sync_get_track(rocket, "Camera:uCamTargetZ");
-    const sync_track* uCamFov = sync_get_track(rocket, "Camera:uCamFov");
-    const sync_track* uBloomThreshold = sync_get_track(rocket, "Global:uBloomThreshold");
-    const sync_track* uCAberr = sync_get_track(rocket, "Tone:uCAberr");
-    const sync_track* uExposure = sync_get_track(rocket, "Tone:uExposure");
-    const sync_track* uSBloom = sync_get_track(rocket, "Tone:uSBloom");
-    const sync_track* uMBloom = sync_get_track(rocket, "Tone:uMBloom");
-    const sync_track* uLBloom = sync_get_track(rocket, "Tone:uLBloom");
 
     // Set up scenes
     std::string rmFragPath(RES_DIRECTORY);
     rmFragPath += "shader/basic_frag.glsl";
-    Scene scene(std::vector<std::string>({vertPath, rmFragPath}),
-                std::vector<std::string>(), rocket);
+    Scene scene({vertPath, rmFragPath},{});
 
     // Define different texture params
     TextureParams rgb16fParams = {GL_RGB16F, GL_RGB, GL_FLOAT,
@@ -296,13 +251,6 @@ int main()
     tonemapFragPath += "shader/tonemap_frag.glsl";
     ShaderProgram tonemapShader(vertPath, tonemapFragPath);
 
-#ifdef TCPROCKET
-    // Try connecting to rocket-server
-    int rocketConnected = sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
-    if (!rocketConnected)
-        cout << "[rocket] failed to connect" << endl;
-#endif // TCPROCKET
-
     Timer rT;
     Timer gT;
     GpuProfiler sceneProf(5);
@@ -310,10 +258,6 @@ int main()
     GpuProfiler bloomProf(5);
     GpuProfiler cAberrProf(5);
     GpuProfiler toneProf(5);
-
-#ifdef MUSIC_AUTOPLAY
-    AudioStream::getInstance().play();
-#endif // MUSIC_AUTOPLAY
 
     // Run the main loop
     while (!glfwWindowShouldClose(windowPtr)) {
@@ -333,24 +277,21 @@ int main()
             RESIZED = false;
         }
 
-        // Sync
-        double syncRow = AudioStream::getInstance().getRow();
-
-#ifdef TCPROCKET
-        // Try re-connecting to rocket-server if update fails
-        // Drops all the frames, if trying to connect on windows
-        if (sync_update(rocket, (int)floor(syncRow), &audioSync, (void *)&streamHandle))
-            sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT);
-#endif // TCPROCKET
-
-#ifdef GUI
         ImGui_ImplGlfwGL3_NewFrame();
-#endif // GUI
 
-#ifdef GUI
         // Update imgui
         {
-            ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiSetCond_Once);
+            ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiSetCond_Always);
+            ImGui::Begin("Control");
+            ImGui::SliderFloat3("camPos", glm::value_ptr(uCamPos), -10, 10);
+            ImGui::SliderFloat("fov", &uCamFov, 0, 180);
+            ImGui::SliderFloat("bloomThreshold", &uBloomThreshold, 0, 10);
+            ImGui::SliderFloat3("bloom", glm::value_ptr(uBloom), 0, 5);
+            ImGui::SliderFloat("chromAber", &uCAberr, 0, 5);
+            ImGui::SliderFloat("exposure", &uExposure, 0, 10);
+            ImGui::End();
+            ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Always);
             ImGui::SetNextWindowPos(ImVec2(LOGM, YRES - LOGH - LOGM), ImGuiSetCond_Always);
             ImGui::Begin("Log", &showLog, logWindowFlags);
             ImGui::Text("Frame: %.1f Scene: %.1f Refl: %.1f, Bloom: %.1f CAberr: %.1f Tone: %.1f",
@@ -364,7 +305,6 @@ int main()
             logger.Draw();
             ImGui::End();
         }
-#endif // GUI
 
         // Try reloading the shader every 0.5s
         if (rT.getSeconds() > 0.5f) {
@@ -387,19 +327,15 @@ int main()
         sceneProf.startSample();
         // Bind scene and main buffers
         glViewport(0, 0, XRES, YRES);
-        scene.bind(syncRow);
+        scene.bind();
         mainFbo.bindWrite();
         // Bind global uniforms
         glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
         glUniform2fv(scene.getULoc("uRes"), 1, glm::value_ptr(res));
         glUniform2fv(scene.getULoc("uMPos"), 1, glm::value_ptr(CURSOR_POS));
-        glUniform1f(scene.getULoc("uCamPosX"), (float)sync_get_val(uCamPosX, syncRow));
-        glUniform1f(scene.getULoc("uCamPosY"), (float)sync_get_val(uCamPosY, syncRow));
-        glUniform1f(scene.getULoc("uCamPosZ"), (float)sync_get_val(uCamPosZ, syncRow));
-        glUniform1f(scene.getULoc("uCamTargetX"), (float)sync_get_val(uCamTargetX, syncRow));
-        glUniform1f(scene.getULoc("uCamTargetY"), (float)sync_get_val(uCamTargetY, syncRow));
-        glUniform1f(scene.getULoc("uCamTargetZ"), (float)sync_get_val(uCamTargetZ, syncRow));
-        glUniform1f(scene.getULoc("uCamFov"), (float)sync_get_val(uCamFov, syncRow));
+        glUniform3fv(scene.getULoc("uCamPos"), 1, glm::value_ptr(uCamPos));
+        glUniform3fv(scene.getULoc("uCamTarget"), 1, glm::value_ptr(uCamTarget));
+        glUniform1f(scene.getULoc("uCamFov"), uCamFov);
         fbmFbo.bindRead(0, GL_TEXTURE0, scene.getULoc("uFbmSampler"));
         // Render scene to main buffers
         q.render();
@@ -436,7 +372,7 @@ int main()
         glViewport(0, 0, XRES, YRES);
         bloomFbo.bindWrite();
         glUniform2fv(preBloomShader.getULoc("uRes"), 1, glm::value_ptr(res));
-        glUniform1f(preBloomShader.getULoc("uBloomThreshold"), (float)sync_get_val(uBloomThreshold, syncRow));
+        glUniform1f(preBloomShader.getULoc("uBloomThreshold"), uBloomThreshold);
         reflCompoFbo.bindRead(0, GL_TEXTURE0, gaussianShader.getULoc("uColorSampler"));
         q.render();
         bloomFbo.genMipmap(0);
@@ -491,9 +427,7 @@ int main()
         glViewport(0, 0, XRES, YRES);
         mainFbo.bindWrite();
         glUniform2fv(postBloomShader.getULoc("uRes"), 1, glm::value_ptr(res));
-        glUniform1f(postBloomShader.getULoc("uSBloom"), (float)sync_get_val(uSBloom, syncRow));
-        glUniform1f(postBloomShader.getULoc("uMBloom"), (float)sync_get_val(uMBloom, syncRow));
-        glUniform1f(postBloomShader.getULoc("uLBloom"), (float)sync_get_val(uLBloom, syncRow));
+        glUniform3fv(postBloomShader.getULoc("uBloom"), 1, glm::value_ptr(uBloom));
         pongFbo.bindRead(0, GL_TEXTURE0, postBloomShader.getULoc("uSBloomSampler"));
         pong2Fbo.bindRead(0, GL_TEXTURE1, postBloomShader.getULoc("uMBloomSampler"));
         pong4Fbo.bindRead(0, GL_TEXTURE2, postBloomShader.getULoc("uLBloomSampler"));
@@ -508,7 +442,7 @@ int main()
         glViewport(0, 0, XRES, YRES);
         pingFbo.bindWrite();
         glUniform2fv(cAberrShader.getULoc("uRes"), 1, glm::value_ptr(res));
-        glUniform1f(cAberrShader.getULoc("uCAberr"), (float)sync_get_val(uCAberr, syncRow));
+        glUniform1f(cAberrShader.getULoc("uCAberr"), uCAberr);
         mainFbo.bindRead(0, GL_TEXTURE0, cAberrShader.getULoc("uColorSampler"));
         q.render();
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -519,33 +453,19 @@ int main()
         glViewport(0, 0, XRES, YRES);
         tonemapShader.bind();
         glUniform2fv(tonemapShader.getULoc("uRes"), 1, glm::value_ptr(res));
-        glUniform1f(tonemapShader.getULoc("uExposure"), (float)sync_get_val(uExposure, syncRow));
+        glUniform1f(tonemapShader.getULoc("uExposure"), uExposure);
         pingFbo.bindRead(0, GL_TEXTURE0, tonemapShader.getULoc("uHdrSampler"));
         q.render();
         toneProf.endSample();
 
-
-#ifdef GUI
         ImGui::Render();
-#endif // GUI
 
         glfwSwapBuffers(windowPtr);
 
-#ifdef MUSIC_AUTOPLAY
-        if (!AudioStream::getInstance().isPlaying()) glfwSetWindowShouldClose(windowPtr, GLFW_TRUE);
-#endif // MUSIC_AUTOPLAY
     }
 
-    // Save rocket tracks
-    sync_save_tracks(rocket);
-
-    // Release resources
-    sync_destroy_device(rocket);
-
-#ifdef GUI
     std::cout.rdbuf(oldCout);
     ImGui_ImplGlfwGL3_Shutdown();
-#endif // GUI
 
     glfwDestroyWindow(windowPtr);
     glfwTerminate();
