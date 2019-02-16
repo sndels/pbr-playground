@@ -1,4 +1,5 @@
 # pbr-playground
+![screenshot](screenshot.png)
 
 The original [skunkwork](https://www.github.com/sndels/skunkwork) repo that turned
 into a demo base with a hard coded post-processing pipeline. Implements PBR-shading along the
